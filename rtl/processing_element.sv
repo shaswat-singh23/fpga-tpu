@@ -29,4 +29,19 @@ output logic [ACC_WIDTH-1:0] result,
 output logic [DATA_WIDTH-1:0] a_out,
 output logic [DATA_WIDTH-1:0] b_out
     );
+    
+    //logic [ACC_WIDTH-1:0] partialsum;
+    //logic [DATA_WIDTH-1:0] a
+    always_ff @(posedge clk) begin
+        if (rst) begin
+            result<=0;
+            a_out<=0;
+            b_out<=0;
+        end
+        else begin
+            a_out<=a_in;
+            b_out<=b_in;
+            result<= result + (a_in*b_in);
+        end
+    end
 endmodule
