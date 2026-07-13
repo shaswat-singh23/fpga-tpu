@@ -23,10 +23,10 @@
 module systolic_array #(parameter N = 4, DATA_WIDTH = 8, ACC_WIDTH =32)(
 input logic clk,
 input logic rst,
-input logic enable,
+input logic [2*N-2:0] enable,
 input logic [DATA_WIDTH-1:0] a_mat[0:N-1],
 input logic[DATA_WIDTH-1:0] b_mat [0:N-1],
-output logic [0:N-1][0:N-1] results
+output logic [ACC_WIDTH-1:0] results [0:N-1][0:N-1]
     );
     logic [DATA_WIDTH-1:0] awire [0:N-1][0:N];
     logic [DATA_WIDTH-1:0] bwire [0:N][0:N-1];
@@ -39,7 +39,7 @@ output logic [0:N-1][0:N-1] results
                 processing_element #(.DATA_WIDTH(DATA_WIDTH), .ACC_WIDTH(ACC_WIDTH))
                     pe (.a_in(awire[i][j]),
                       .b_in(bwire[i][j]),
-                      .enable(enable),
+                      .enable(enable[i+j]),
                       .clk(clk),
                       .rst(rst),
                       .result(results[i][j]),
