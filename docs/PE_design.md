@@ -16,6 +16,7 @@ Each processing element within the systolic array is responsible for computing t
 | Name | Direction | Width | Description |
 |---|---|---|---|
 | `clk` | input | 1 | Clock signal |
+| `enable` | input | 1 | Is PE enabled to compute |
 | `reset` | input | 1 | Synchronous reset |
 | `a_in` | input | DATA_WIDTH | Element of matrix A from left neighbor |
 | `b_in` | input | DATA_WIDTH | Element of matrix B from top neighbor |

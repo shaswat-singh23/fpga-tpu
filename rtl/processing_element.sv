@@ -25,6 +25,7 @@ input logic [DATA_WIDTH-1:0] a_in,
 input logic [DATA_WIDTH-1:0] b_in,
 input logic clk,
 input logic rst,
+input logic enable,
 output logic [ACC_WIDTH-1:0] result,
 output logic [DATA_WIDTH-1:0] a_out,
 output logic [DATA_WIDTH-1:0] b_out
@@ -38,7 +39,7 @@ output logic [DATA_WIDTH-1:0] b_out
             a_out<=0;
             b_out<=0;
         end
-        else begin
+        else if(enable) begin
             a_out<=a_in;
             b_out<=b_in;
             result<= result + (a_in*b_in);
