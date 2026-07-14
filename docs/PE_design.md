@@ -10,24 +10,35 @@ Each processing element within the systolic array is responsible for computing t
 | Name | Default | Description |
 |---|---|---|
 | `DATA_WIDTH` | 8 | Bit width of input operands (A, B elements) |
-| `ACC_WIDTH` | 32 | Bit width of accumulator (prevents overflow) |
+| `ACC_WIDTH` | 32 | Bit width of accumulator (chosen high to prevent overflow across scaling; see Design Decisions) |
 
 ### Ports
 | Name | Direction | Width | Description |
 |---|---|---|---|
 | `clk` | input | 1 | Clock signal |
-| `enable` | input | 1 | Is PE enabled to compute |
-| `reset` | input | 1 | Synchronous reset |
+| `rst` | input | 1 | Synchronous reset (clears accumulator and pass-through registers to 0) |
+| `enable` | input | 1 | Gates accumulation; when low, PE holds all registers unchanged |
 | `a_in` | input | DATA_WIDTH | Element of matrix A from left neighbor |
 | `b_in` | input | DATA_WIDTH | Element of matrix B from top neighbor |
-| `a_out` | output | DATA_WIDTH | Pass-through of a_in to right neighbor (registered) |
-| `b_out` | output | DATA_WIDTH | Pass-through of b_in to bottom neighbor (registered) |
-| `result` | output | ACC_WIDTH | Running accumulated value |
+| `a_out` | output | DATA_WIDTH | Pass-through of a_in to right neighbor (registered, one-cycle delay) |
+| `b_out` | output | DATA_WIDTH | Pass-through of b_in to bottom neighbor (registered, one-cycle delay) |
+| `result` | output | ACC_WIDTH | Running accumulated value (a_in × b_in summed across active cycles) |
 
 ## Behavior
 
-In each clock cycle, a PE receives a single element of A and B. It then multiplies them together and adds that to its accumulated sum. Then, it takes those same two elements and passes them along to its two neighbors. On reset, the output registers and accumulator are set to 0.
+On each rising clock edge:
+- If `rst` is asserted, `result`, `a_out`, and `b_out` are all cleared to 0.
+- Else if `enable` is high, the PE computes `a_in × b_in`, adds the product to the internal accumulator, and registers `a_in` → `a_out` and `b_in` → `b_out` for pass-through to neighbors on the next cycle.
+- Else (`enable` low, not in reset), all registers hold their current values — no accumulation, no pass-through update.
+
+The one-cycle registered delay on `a_out`/`b_out` is what enables the systolic wavefront pattern: data arriving at PE(i,j) on cycle t propagates to PE(i,j+1) and PE(i+1,j) at cycle t+1, correctly aligned for their own computation.
 
 ## Design Decisions
 
-While weight stationary can be more efficient when doing repeated tests with one of the elements being the same, as is the case with LLM inference, I will initially be testing with various different matrices, making an output stationary model necessary. It's also simpler to design, so I will start off with it with possibility of including weight stationary functionality if time allows. These specific widths were chosen to give a baseline to verify system functionality on, and will be scaled up later. Once again, the current bit width is set just for testing and will be scaled up later. The accumulator width is set high just to have plenty of extra headroom as I scale up without needing to readjust every time.
+**Output-stationary dataflow** was chosen over weight-stationary. Weight-stationary is more efficient when the same weight matrix processes many different inputs (as in LLM inference, where trained weights are frozen and streamed against different activation batches), because weights load once and stay put while activations flow through, reducing per-cycle data movement. However, this project's verification methodology uses different random test matrices for each simulation run — there's no weight reuse pattern to exploit — so output-stationary's per-cycle data flow of both operands has equivalent efficiency here while being simpler to implement correctly.
+
+**`ACC_WIDTH = 32`** was chosen with generous headroom to accommodate scaling without needing recalculation for each N. Strict minimum required is `2*DATA_WIDTH + ceil(log2(N))` (16 + log₂N for DATA_WIDTH=8) — 18 bits at N=4, 20 bits at N=16, 21 bits at N=32. Choosing 32 upfront avoids per-scale readjustment; the extra bits cost negligible additional FF resources.
+
+**Synchronous reset** was chosen over asynchronous reset for cleaner FPGA timing analysis and to avoid metastability concerns on reset deassertion. The reset condition is checked inside the clock-triggered `always_ff` block, taking effect on the next `posedge clk` when `rst` is high.
+
+**Per-PE `enable` gating** (rather than always-accumulating behavior) was added after recognizing that PEs need to be inactive until real data reaches them via the systolic wavefront. Without gating, PEs would accumulate zero-valued products from idle inputs during pre-activation cycles, which is functionally harmless (0 × 0 = 0) but signals a design that hadn't correctly modeled the temporal wavefront pattern. The `enable` signal makes the temporal activation explicit and would remain necessary for any variant supporting partial-matrix operation or pipelining.

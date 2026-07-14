@@ -19,7 +19,7 @@
 // 
 //////////////////////////////////////////////////////////////////////////////////
 
-
+(* use_dsp = "yes" *)
 module processing_element #(parameter DATA_WIDTH = 8, parameter ACC_WIDTH = 32)(
 input logic [DATA_WIDTH-1:0] a_in,
 input logic [DATA_WIDTH-1:0] b_in,
@@ -42,6 +42,7 @@ output logic [DATA_WIDTH-1:0] b_out
         else if(enable) begin
             a_out<=a_in;
             b_out<=b_in;
+
             result<= result + (a_in*b_in);
         end
     end
