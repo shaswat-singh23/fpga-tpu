@@ -20,7 +20,7 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 
-module systolic_array #(parameter N = 4, DATA_WIDTH = 8, ACC_WIDTH =32)(
+module systolic_array #(parameter N = 8, DATA_WIDTH = 16, ACC_WIDTH =32)(
 input logic clk,
 input logic rst,
 input logic [2*N-2:0] enable,

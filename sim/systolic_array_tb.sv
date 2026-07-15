@@ -21,7 +21,7 @@
 
 
 module systolic_array_tb();
-    parameter N=4, DATA_WIDTH = 8, ACC_WIDTH = 32;
+    parameter N=16, DATA_WIDTH = 8, ACC_WIDTH = 32;
 
     logic clk, rst;
     logic [2*N-2:0] enable;
@@ -79,8 +79,11 @@ module systolic_array_tb();
 
     // Test sequence: only handles test data setup and reset, NOT enable/a_mat/b_mat
     initial begin
-        a_full = '{'{1,2,3,4}, '{5,6,7,8}, '{9,10,11,12}, '{13,14,15,16}};
-        b_full = '{'{1,2,3,4}, '{5,6,7,8}, '{9,10,11,12}, '{13,14,15,17}};
+    for (int i = 0; i < N; i++)
+    for (int j = 0; j < N; j++) begin
+        a_full[i][j] = (i * N + j) % 255 + 1;
+        b_full[i][j] = ((i * N + j) * 7) % 255 + 1;  // different multiplier for distinct values
+    end
 
 
         clk = 0;
@@ -91,7 +94,7 @@ module systolic_array_tb();
         // Let simulation run long enough for all diagonals to complete
         // Last diagonal (d=2N-2) finishes at cycle (2N-2)+(N-1) = 3N-3
         // Add buffer cycles
-        #((3*N) * 10);
+        #((3*N+2) * 10);
 
         rst = 1;
         #10;
