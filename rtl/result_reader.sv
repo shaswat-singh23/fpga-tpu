@@ -21,42 +21,63 @@
 
 
 module result_reader #(parameter N=8, ACC_WIDTH=32)
-(input logic clk, rst, start_read, m_axis_tready,
-output logic m_axis_tvalid, read_done, m_axis_tlast,
-output logic [ACC_WIDTH-1:0] m_axis_tdata,
+(input logic clk, rst, start_read, m_axis_one_tready, m_axis_two_tready,
+output logic m_axis_one_tvalid, m_axis_two_tvalid, read_done, m_axis_one_tlast, m_axis_two_tlast,
+output logic [ACC_WIDTH*2-1:0] m_axis_one_tdata,
+output logic [ACC_WIDTH*2-1:0] m_axis_two_tdata,
 input logic [ACC_WIDTH-1:0] results [0:N-1][0:N-1]
     );
     typedef enum logic [1:0] {IDLE, READING, FINISHED} state_t;
     state_t state;
     
     localparam TOTAL_ELEMENTS = N*N;
-    logic [$clog2(TOTAL_ELEMENTS)-1:0] index;
-    wire transfer = m_axis_tvalid && m_axis_tready;
+    logic [$clog2(TOTAL_ELEMENTS>>2)-1:0] index;
+    logic one_done;
+    logic two_done;
     
+    wire transferone = m_axis_one_tvalid && m_axis_one_tready;
+    wire transfertwo = m_axis_two_tvalid && m_axis_two_tready;
+
     always_ff @(posedge clk) begin
         if (rst) begin
-            m_axis_tvalid<=0;
+            m_axis_one_tvalid<=0;
+            m_axis_two_tvalid<=0;
             read_done<=0;
             state<= IDLE;
             index<=0;
+            one_done<=0;
+            two_done<=0;
         end else begin
             case(state)
                 IDLE: begin
                     read_done<=0;
+                    one_done<=0;
+                    two_done<=0;
                     if (start_read) begin
                         state<= READING;
                         index<=0;
-                        m_axis_tvalid<=1;
+                        m_axis_one_tvalid<=1;
+                        m_axis_two_tvalid<=1;
                     end
                 end
                 READING: begin
-                    if (transfer) begin
-                        if (index==TOTAL_ELEMENTS-1) begin
-                            state<=FINISHED;
-                            m_axis_tvalid<=0;
-                        end else begin
-                            index<=index+1;
+                    if (transferone) begin
+                        if ((index<<2) == TOTAL_ELEMENTS-4) begin
+                            m_axis_one_tvalid <= 0;
+                            one_done <= 1;
                         end
+                    end
+                    if (transfertwo) begin
+                        if ((index<<2) == TOTAL_ELEMENTS-4) begin
+                            m_axis_two_tvalid <= 0;
+                            two_done <= 1;
+                        end
+                    end
+                    if (transferone && transfertwo && (index<<2) != TOTAL_ELEMENTS-4) begin
+                        index <= index + 1;
+                    end
+                    if (one_done && two_done) begin
+                        state <= FINISHED;
                     end
                 end
                 FINISHED: begin
@@ -66,6 +87,10 @@ input logic [ACC_WIDTH-1:0] results [0:N-1][0:N-1]
                endcase 
         end
     end
-    assign m_axis_tdata = results[index/N][index%N];
-    assign m_axis_tlast = m_axis_tvalid && (index==TOTAL_ELEMENTS-1);
+    assign m_axis_one_tdata = {results[(index<<2)/N][((index<<2)%N)+1],results[(index<<2)/N][(index<<2)%N]};
+    assign m_axis_two_tdata = {results[(index<<2)/N][((index<<2)%N)+3],results[(index<<2)/N][((index<<2)%N)+2]};
+
+    assign m_axis_one_tlast = m_axis_one_tvalid && ((index<<2)==TOTAL_ELEMENTS-4);
+    assign m_axis_two_tlast = m_axis_two_tvalid && ((index<<2)==TOTAL_ELEMENTS-4);
+
 endmodule
