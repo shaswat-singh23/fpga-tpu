@@ -2,27 +2,27 @@
 
 ## Overview
 
-Top-level wiring for the full pipeline: `matrix_loader` → `feeder_sequencer` → `result_reader`. Gating logic ensures shared buffers (`a_full`/`b_full`, `results`) are not overwritten while still in use downstream.
+Top-level wiring for the full pipeline: `matrix_loader` → `feeder_sequencer` → `result_reader`, coordinated by `pipeline_ctrl`. Gating logic ensures shared buffers (`a_full`/`b_full`, `results`) are not overwritten while still in use downstream.
 
-## Gating
+## `pipeline_ctrl`
 
-### `feeder_sequencer.start`
+Standalone module owning the gating logic between the three pipeline stages.
 
-Assigned as `load_done && not_reading`. Both conditions must hold to trigger a new computation:
-- `load_done`: matrices are loaded and ready
-- `not_reading`: the previous computation's results have been fully read out
+### Ports
+| Name | Direction | Description |
+|---|---|---|
+| `clk`, `rst` | input | Clock, synchronous reset |
+| `load_done` | input | From `matrix_loader` |
+| `calc_done` | input | From `feeder_sequencer` |
+| `read_done` | input | From `result_reader` |
+| `feeder_start` | output | To `feeder_sequencer.start` |
+| `loader_consumed` | output | To `matrix_loader.consumed` |
 
-### `not_reading` latch
+### Behavior
 
-`read_done` from `result_reader` is a one-cycle pulse. To use it as a level condition, it is latched:
+`feeder_start = load_done && read_consumed`. `read_consumed` is an internal latch: sets high on `read_done`'s one-cycle pulse, clears when `feeder_start` fires, defaults high after reset so the first computation isn't blocked waiting on a nonexistent prior `read_done`. Will need adjustment in future for pipelining to be possible.
 
-- Sets high on `read_done` pulse
-- Clears when `feeder_start` fires (new computation begins)
-- Defaults high after reset, so the very first computation is not blocked waiting for a nonexistent prior `read_done`
-
-### `matrix_loader.consumed`
-
-Wired to `calc_done` (the feeder's `done` output). This blocks `matrix_loader` from rearming and accepting new data until the feeder has finished reading `a_full`/`b_full`, protecting the input buffers from mid-computation overwrite.
+`loader_consumed` is a direct passthrough of `calc_done`. Once the feeder has finished consuming `a_full`/`b_full`, the loader is safe to rearm.
 
 ## Verified Behavior
 
