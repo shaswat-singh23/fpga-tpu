@@ -33,7 +33,7 @@ input logic [ACC_WIDTH-1:0] results [0:N-1][0:N-1]
     localparam TOTAL_ELEMENTS = N*N;
     logic [$clog2(TOTAL_ELEMENTS>>2)-1:0] index;
     localparam LAST_IDX = (TOTAL_ELEMENTS>>2)-1;
-    wire [$clog2(TOTAL_ELEMENTS>>2)-1:0] base ={index, 2'b00};
+    wire [$clog2(TOTAL_ELEMENTS)-1:0] base ={index, 2'b00};
     
     wire transferone = m_axis_one_tvalid && m_axis_one_tready;
     wire transfertwo = m_axis_two_tvalid && m_axis_two_tready;

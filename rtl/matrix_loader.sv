@@ -42,7 +42,7 @@ input logic consumed
             $fatal(1, "matrix_loader: N must be a multiple of 8, got N=%0d", N);
     end
     localparam TOTAL_ELEMENTS = N*N;
-    logic [$clog2(TOTAL_ELEMENTS>>3)-1:0] a_count, b_count;
+    logic [$clog2(TOTAL_ELEMENTS)-1:0] a_count, b_count;
     logic a_done, b_done;
     
     assign s_axis_a_tready = !a_done;
@@ -59,36 +59,36 @@ input logic consumed
             a_frame_err<=0; b_frame_err<=0;
         end else begin
             if (a_transfer) begin
-                a_full[(a_count<<3)/N][((a_count<<3)%N)+0] <= s_axis_a_tdata[7:0];
-                a_full[(a_count<<3)/N][((a_count<<3)%N)+1] <= s_axis_a_tdata[15:8];
-                a_full[(a_count<<3)/N][((a_count<<3)%N)+2] <= s_axis_a_tdata[23:16];
-                a_full[(a_count<<3)/N][((a_count<<3)%N)+3] <= s_axis_a_tdata[31:24];
-                a_full[(a_count<<3)/N][((a_count<<3)%N)+4] <= s_axis_a_tdata[39:32];
-                a_full[(a_count<<3)/N][((a_count<<3)%N)+5] <= s_axis_a_tdata[47:40];
-                a_full[(a_count<<3)/N][((a_count<<3)%N)+6] <= s_axis_a_tdata[55:48];
-                a_full[(a_count<<3)/N][((a_count<<3)%N)+7] <= s_axis_a_tdata[63:56];
-                if (a_count==(TOTAL_ELEMENTS>>3)-1)begin
+                a_full[(a_count)/N][((a_count)%N)+0] <= s_axis_a_tdata[7:0];
+                a_full[(a_count)/N][((a_count)%N)+1] <= s_axis_a_tdata[15:8];
+                a_full[(a_count)/N][((a_count)%N)+2] <= s_axis_a_tdata[23:16];
+                a_full[(a_count)/N][((a_count)%N)+3] <= s_axis_a_tdata[31:24];
+                a_full[(a_count)/N][((a_count)%N)+4] <= s_axis_a_tdata[39:32];
+                a_full[(a_count)/N][((a_count)%N)+5] <= s_axis_a_tdata[47:40];
+                a_full[(a_count)/N][((a_count)%N)+6] <= s_axis_a_tdata[55:48];
+                a_full[(a_count)/N][((a_count)%N)+7] <= s_axis_a_tdata[63:56];
+                if (a_count==(TOTAL_ELEMENTS)-8)begin
                     if (!s_axis_a_tlast) a_frame_err <= 1;
                     a_done<=1;
                 end else begin
-                    a_count<=a_count+1;
+                    a_count<=a_count+8;
                     if (s_axis_a_tlast) a_frame_err <= 1;
                 end
             end
             if (b_transfer) begin
-                b_full[(b_count<<3)/N][((b_count<<3)%N)+0] <= s_axis_b_tdata[7:0];
-                b_full[(b_count<<3)/N][((b_count<<3)%N)+1] <= s_axis_b_tdata[15:8];
-                b_full[(b_count<<3)/N][((b_count<<3)%N)+2] <= s_axis_b_tdata[23:16];
-                b_full[(b_count<<3)/N][((b_count<<3)%N)+3] <= s_axis_b_tdata[31:24];
-                b_full[(b_count<<3)/N][((b_count<<3)%N)+4] <= s_axis_b_tdata[39:32];
-                b_full[(b_count<<3)/N][((b_count<<3)%N)+5] <= s_axis_b_tdata[47:40];
-                b_full[(b_count<<3)/N][((b_count<<3)%N)+6] <= s_axis_b_tdata[55:48];
-                b_full[(b_count<<3)/N][((b_count<<3)%N)+7] <= s_axis_b_tdata[63:56];
-                if (b_count==(TOTAL_ELEMENTS>>3)-1)begin
+                b_full[(b_count)/N][((b_count)%N)+0] <= s_axis_b_tdata[7:0];
+                b_full[(b_count)/N][((b_count)%N)+1] <= s_axis_b_tdata[15:8];
+                b_full[(b_count)/N][((b_count)%N)+2] <= s_axis_b_tdata[23:16];
+                b_full[(b_count)/N][((b_count)%N)+3] <= s_axis_b_tdata[31:24];
+                b_full[(b_count)/N][((b_count)%N)+4] <= s_axis_b_tdata[39:32];
+                b_full[(b_count)/N][((b_count)%N)+5] <= s_axis_b_tdata[47:40];
+                b_full[(b_count)/N][((b_count)%N)+6] <= s_axis_b_tdata[55:48];
+                b_full[(b_count)/N][((b_count)%N)+7] <= s_axis_b_tdata[63:56];
+                if (b_count==(TOTAL_ELEMENTS)-8)begin
                     if (!s_axis_b_tlast) b_frame_err <= 1;
                     b_done<=1;
                 end else begin
-                    b_count<=b_count+1;
+                    b_count<=b_count+8;
                     if (s_axis_b_tlast) b_frame_err <= 1;
                 end
             end
