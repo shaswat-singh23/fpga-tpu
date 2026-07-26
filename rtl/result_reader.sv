@@ -32,65 +32,60 @@ input logic [ACC_WIDTH-1:0] results [0:N-1][0:N-1]
     
     localparam TOTAL_ELEMENTS = N*N;
     logic [$clog2(TOTAL_ELEMENTS>>2)-1:0] index;
-    logic one_done;
-    logic two_done;
+    localparam LAST_IDX = (TOTAL_ELEMENTS>>2)-1;
+    wire [$clog2(TOTAL_ELEMENTS>>2)-1:0] base ={index, 2'b00};
     
     wire transferone = m_axis_one_tvalid && m_axis_one_tready;
     wire transfertwo = m_axis_two_tvalid && m_axis_two_tready;
 
+    logic one_accepted, two_accepted;
+    
     always_ff @(posedge clk) begin
         if (rst) begin
-            m_axis_one_tvalid<=0;
-            m_axis_two_tvalid<=0;
-            read_done<=0;
-            state<= IDLE;
-            index<=0;
-            one_done<=0;
-            two_done<=0;
+            state <= IDLE;
+            index <= 0;
+            one_accepted <= 0;
+            two_accepted <= 0;
+            read_done <= 0;
         end else begin
-            case(state)
+            case (state)
                 IDLE: begin
-                    read_done<=0;
-                    one_done<=0;
-                    two_done<=0;
+                    read_done <= 0;
+                    one_accepted <= 0;
+                    two_accepted <= 0;
                     if (start_read) begin
-                        state<= READING;
-                        index<=0;
-                        m_axis_one_tvalid<=1;
-                        m_axis_two_tvalid<=1;
+                        state <= READING;
+                        index <= 0;
                     end
                 end
                 READING: begin
-                    if (transferone) begin
-                        if ((index<<2) == TOTAL_ELEMENTS-4) begin
-                            m_axis_one_tvalid <= 0;
-                            one_done <= 1;
+                    if (transferone) one_accepted <= 1;
+                    if (transfertwo) two_accepted <= 1;
+                    if ((one_accepted || transferone) && (two_accepted || transfertwo)) begin
+                        if (index == LAST_IDX) begin
+                            state <= FINISHED;
+                        end else begin
+                            index <= index + 1;
+                            one_accepted <= 0;
+                            two_accepted <= 0;
                         end
-                    end
-                    if (transfertwo) begin
-                        if ((index<<2) == TOTAL_ELEMENTS-4) begin
-                            m_axis_two_tvalid <= 0;
-                            two_done <= 1;
-                        end
-                    end
-                    if (transferone && transfertwo && (index<<2) != TOTAL_ELEMENTS-4) begin
-                        index <= index + 1;
-                    end
-                    if (one_done && two_done) begin
-                        state <= FINISHED;
                     end
                 end
                 FINISHED: begin
-                    read_done<=1;
-                    state<=IDLE;
+                    read_done <= 1;
+                    state <= IDLE;
                 end
-               endcase 
+            endcase
         end
     end
-    assign m_axis_one_tdata = {results[(index<<2)/N][((index<<2)%N)+1],results[(index<<2)/N][(index<<2)%N]};
-    assign m_axis_two_tdata = {results[(index<<2)/N][((index<<2)%N)+3],results[(index<<2)/N][((index<<2)%N)+2]};
 
-    assign m_axis_one_tlast = m_axis_one_tvalid && ((index<<2)==TOTAL_ELEMENTS-4);
-    assign m_axis_two_tlast = m_axis_two_tvalid && ((index<<2)==TOTAL_ELEMENTS-4);
+    assign m_axis_one_tvalid = (state == READING) && !one_accepted;
+    assign m_axis_two_tvalid = (state == READING) && !two_accepted;
+    assign m_axis_one_tlast  = m_axis_one_tvalid && (index == (TOTAL_ELEMENTS>>2) - 1);
+    assign m_axis_two_tlast  = m_axis_two_tvalid && (index == (TOTAL_ELEMENTS>>2) - 1);
+    assign m_axis_one_tdata = {results[base/N][(base%N)+1],results[base/N][base%N]};
+    assign m_axis_two_tdata = {results[base/N][(base%N)+3],results[base/N][(base%N)+2]};
+
+
 
 endmodule

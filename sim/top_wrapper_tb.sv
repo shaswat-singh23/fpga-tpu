@@ -131,7 +131,17 @@ module top_wrapper_tb();
             if (read_lasttwo) tlast_two_count <= tlast_two_count + 1;
         end
     end
-
+    
+    always @(posedge clk) begin
+       if (rst) begin
+           reader_downstream_ready    <= 0;
+           reader_downstream_readytwo <= 0;
+       end else begin
+           reader_downstream_ready    <= ($urandom_range(0,99) < 60);
+           reader_downstream_readytwo <= ($urandom_range(0,99) < 30);
+       end
+   end
+    
     initial begin
         for (int i = 0; i < N; i++)
             for (int j = 0; j < N; j++) begin
@@ -143,8 +153,6 @@ module top_wrapper_tb();
         rst = 1;
         s_axis_a_tvalid = 0;
         s_axis_b_tvalid = 0;
-        reader_downstream_ready = 1;
-        reader_downstream_readytwo = 1;  
         fire_one = 0; fire_two = 0;
         tlast_one_count = 0; tlast_two_count = 0;
         #10;
@@ -153,7 +161,15 @@ module top_wrapper_tb();
     
         s_axis_a_tvalid = 1;
         s_axis_b_tvalid = 1;
-    
+        
+       fork
+           begin
+               #100000;
+               $error("TIMEOUT - read_done never asserted");
+               $finish;
+           end
+        join_none
+        
         wait (read_done == 1);
         #20;
     
