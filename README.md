@@ -38,9 +38,8 @@ See `docs/` for module-level design notes.
 **Working on hardware.** All 64 elements of an 8×8 matmul match the CPU golden model bit-exactly. Board: PYNQ-Z2 (XC7Z020-1CLG400C).
 
 Resource utilization:
-- 64 / 220 DSP48E1 slices (29%)
-- ~5700 LUTs, ~7300 FFs
-- Clock: 100 MHz (FCLK_CLK0)
+![Resource Utilization](images/resource_utilization.png)
+64 DSP48E1 slices (one per PE, 29% of Zynq-7020's 220), ~5700 LUTs, ~7300 FFs. Clock: 100 MHz (FCLK_CLK0).
 
 ## Repository Layout
 
@@ -61,7 +60,7 @@ Requires Vivado 2024.2+ and Vitis Unified IDE. From a fresh clone:
 3. Package each of `matrix_loader`, `feeder_sequencer`, `pipeline_ctrl`, `result_reader` as a Vivado IP. Set the IP output directory as your IP repository.
 4. In the Tcl console: `source ./bd/design_1.tcl`. This regenerates the block design.
 5. Validate design, generate output products, run synthesis + implementation + bitstream.
-6. Export XSA (`File → Export → Export Hardware`, include bitstream, leave binary unchecked).
+6. Export XSA (`File → Export → Export Hardware`, Select "include bitstream/binary", check bitstream, leave binary unchecked).
 7. In Vitis: create a new platform component from the XSA, then a new application component. Import `vitis/dma_driver.c` as a source file.
 8. Program the bitstream, run the application. Expected output ends with `PASS: all 64 elements match golden model`.
 
@@ -69,11 +68,12 @@ Requires Vivado 2024.2+ and Vitis Unified IDE. From a fresh clone:
 
 - **Simulation**: `sim/top_wrapper_tb.sv` — full-pipeline testbench with independent randomized backpressure on both S2MM ports, timeout on deadlock, cycle-count and TLAST checks, verified via waveform inspection.
 - **Hardware**: automated CPU-side golden matmul in `vitis/dma_driver.c`, run at end-of-transfer against DMA'd result buffers.
+![DMA results verified](images/dma_success.png)
 
 ## Known Limitations
 
 - N=8 only. N=16 would require 256 DSPs, exceeding the 220 available on Zynq-7020.
-- 8-bit input operands, 32-bit accumulator, max value of 8 × 255² ≈ 5.2 × 10⁵, well within 2³².
+- 8-bit unsigned operands with a 32-bit accumulator. Max accumulator value at N=8 is 8 × 255² ≈ 5.2 × 10⁵, well within 2³²; larger K or signed operands would require re-checking the bound.
 - SG_LENGTH_WIDTH set to 8 bits on all DMAs; sufficient for N=8 but would need widening for larger single-shot transfers.
 
 ## Roadmap
