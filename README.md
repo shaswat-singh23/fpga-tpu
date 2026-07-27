@@ -68,6 +68,7 @@ Requires Vivado 2024.2+ and Vitis Unified IDE. From a fresh clone:
 
 - **Simulation**: `sim/top_wrapper_tb.sv` — full-pipeline testbench with independent randomized backpressure on both S2MM ports, timeout on deadlock, cycle-count and TLAST checks, verified via waveform inspection.
 - **Hardware**: automated CPU-side golden matmul in `vitis/dma_driver.c`, run at end-of-transfer against DMA'd result buffers.
+
 ![DMA results verified](images/dma_success.png)
 
 ## Known Limitations
