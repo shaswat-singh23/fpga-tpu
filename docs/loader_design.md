@@ -32,7 +32,7 @@ Internal `a_frame_err`/`b_frame_err` flags catch `tlast` mismatches (early or mi
 
 ## Verification
 
-Full pipeline testbench (`sim/top_wrapper_tb.sv`) verifies two consecutive computations back-to-back with correct rearm timing, at N=8 and N=16.
+Current testbench (sim/top_wrapper_tb.sv) checks a single N=8 transfer with the full pipeline. A prior TB version covered two-shot rearm timing at N=8 and N=16; that coverage regressed when the TB was rewritten to add randomized backpressure on the reader ports and should be restored.
 
 ## Performance
 

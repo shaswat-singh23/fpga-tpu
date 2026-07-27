@@ -51,12 +51,10 @@ input logic consumed
     wire a_transfer = s_axis_a_tready && s_axis_a_tvalid;
     wire b_transfer = s_axis_b_tready && s_axis_b_tvalid;
     
-    logic a_frame_err, b_frame_err;
     always_ff @(posedge clk) begin
         if (rst) begin
             a_done <=0; b_done<=0;
             a_count <=0; b_count<=0;
-            a_frame_err<=0; b_frame_err<=0;
         end else begin
             if (a_transfer) begin
                 a_full[(a_count)/N][((a_count)%N)+0] <= s_axis_a_tdata[7:0];
@@ -68,11 +66,9 @@ input logic consumed
                 a_full[(a_count)/N][((a_count)%N)+6] <= s_axis_a_tdata[55:48];
                 a_full[(a_count)/N][((a_count)%N)+7] <= s_axis_a_tdata[63:56];
                 if (a_count==(TOTAL_ELEMENTS)-8)begin
-                    if (!s_axis_a_tlast) a_frame_err <= 1;
                     a_done<=1;
                 end else begin
                     a_count<=a_count+8;
-                    if (s_axis_a_tlast) a_frame_err <= 1;
                 end
             end
             if (b_transfer) begin
@@ -85,11 +81,9 @@ input logic consumed
                 b_full[(b_count)/N][((b_count)%N)+6] <= s_axis_b_tdata[55:48];
                 b_full[(b_count)/N][((b_count)%N)+7] <= s_axis_b_tdata[63:56];
                 if (b_count==(TOTAL_ELEMENTS)-8)begin
-                    if (!s_axis_b_tlast) b_frame_err <= 1;
                     b_done<=1;
                 end else begin
                     b_count<=b_count+8;
-                    if (s_axis_b_tlast) b_frame_err <= 1;
                 end
             end
             if (consumed) begin

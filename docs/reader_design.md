@@ -32,13 +32,13 @@ Little-endian packing within each beat: lower element index in the lower bits.
 
 ## Behavior
 
-Single shared group counter (`index`) drives both ports — a group only advances once both ports have consumed it. This couples the two lanes: a stall on either port blocks both from advancing. Accepted tradeoff, since total throughput is bound by the slower lane regardless of indexing independence.
+A shared group counter (index) advances once both ports have accepted the current group's beat. Per-port one_accepted/two_accepted latches let the two lanes handshake independently within a group. The leading port deasserts its tvalid after acceptance and waits for the trailing port to catch up, rather than re-transmitting the same beat. This prevents duplicate emission under asymmetric backpressure. read_done asserts once the FSM has reached the end of the transfer.
 
 Each port tracks its own `tvalid`/`tlast`/done state so one lane can finish slightly ahead of the other; `read_done` only asserts once both are done.
 
 ## Verification
 
-Isolated testbench drives `results` directly, checks fire count and `tlast` count per port against golden values.
+Verification: covered by the full-pipeline testbench (sim/top_wrapper_tb.sv) with independent randomized backpressure on both m_axis_*_tready signals to expose asymmetric drain. Golden-model correctness is checked on hardware via CPU-side matmul in vitis/dma_driver.c.
 
 ## Performance
 

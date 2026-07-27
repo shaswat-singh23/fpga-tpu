@@ -145,8 +145,8 @@ module top_wrapper_tb();
     initial begin
         for (int i = 0; i < N; i++)
             for (int j = 0; j < N; j++) begin
-                a_gold[i*N+j] = (i*N+j) % 255 + 1;
-                b_gold[i*N+j] = ((i*N+j)*7) % 255 + 1;
+                a_gold[i*N+j] = (i*N+j) + 1;
+                b_gold[i*N+j] = ((i*N+j+1)*3);
             end
     
         clk = 0;
