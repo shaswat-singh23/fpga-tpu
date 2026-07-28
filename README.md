@@ -35,7 +35,7 @@ See `docs/` for module-level design notes.
 
 ## Status
 
-**Working on hardware.** The 8×8 systolic array matches a CPU golden model bit-exactly, and an ARM-side tiling driver now runs larger matmuls by decomposing into 8×8 tiles: a 16×16 matmul (4 tiles) passed on first hardware run, all 256 elements bit-exact. Board: PYNQ-Z2 (XC7Z020-1CLG400C).
+**Working on hardware.** The 8×8 systolic array matches a CPU golden model bit-exactly, and an ARM-side tiling driver now runs larger matmuls by decomposing into 8×8 tiles with PS-side accumulation: 64x64 (512 tiles) passes bit-exact against a CPU golden model at ~16.9 MB/s effective throughput. Per-tile timing breakdown (ARM global timer) showws the pipeline is latency-bound on per-tile DMA setupt, not bandwidth-bound. See `docs/` for the optimization writeup. Board: PYNQ-Z2 (XC7Z020-1CLG400C).
 
 Resource utilization:
 ![Resource Utilization](images/resource_utilization.png)
@@ -68,7 +68,7 @@ Requires Vivado 2024.2+ and Vitis Unified IDE. From a fresh clone:
 
 - **Simulation**: `sim/top_wrapper_tb.sv` — full-pipeline testbench with independent randomized backpressure on both S2MM ports, timeout on deadlock, cycle-count and TLAST checks, verified via waveform inspection.
 - **Hardware**: automated CPU-side golden matmul in `vitis/dma_driver.c`, run at end-of-transfer against DMA'd result buffers.
-- **Tiled hardware**: 16×16 matmul via 4× tiled 8×8 hardware calls with PS-side accumulation, verified against a CPU golden model — 256/256 elements correct on first run.
+- **Tiled hardware**: 64×64 matmul via 512× tiled 8×8 hardware calls with PS-side accumulation, verified against a CPU golden model bit-exact on hardware. Per-tile ARM Global Timer instrumentation identified DMA re-arm and result-accumulation overhead as the dominant costs (not DMA bandwidth); two targeted software fixes (tile-major memory layout, tile-local accumulation) cut total runtime ~24% with no RTL changes.
 
 ![DMA results verified](images/dma_success.png)
 
@@ -80,7 +80,8 @@ Requires Vivado 2024.2+ and Vitis Unified IDE. From a fresh clone:
 
 ## Roadmap
 
-- HP-port memory bandwidth measurement and roofline analysis (AXI Performance Monitor).
-- Larger tiled matmuls (64×64, 128×128) and throughput measurement at scale.
+- AXI Performance Monitor integration for per-port bandwidth breakdown (current numbers are ARM-side wall-clock; APM would isolate HP-port-level traffic).
+- Scatter-gather DMA to reduce per-tile descriptor-arm overhead (currently the largest single cost bucket).
+- Hardware k-accumulation in RTL to cut result-readback round trips.
 - Timing closure pushed above 100 MHz.
 - FPGA vs. CPU throughput comparison on the same Cortex-A9.
