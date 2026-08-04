@@ -30,8 +30,9 @@ output logic [WIDTH-1:0] rdata
 );
 logic [WIDTH-1:0] mem [0: DEPTH-1];
 always @(posedge clk) begin
-    if (we)
+    if (we) begin
         mem[waddr]<= wdata;
+        end
     rdata<= mem[raddr];
 end
 endmodule

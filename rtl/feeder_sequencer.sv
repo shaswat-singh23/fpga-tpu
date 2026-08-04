@@ -21,11 +21,12 @@
 
 
 module feeder_sequencer #(parameter N=8, DATA_WIDTH = 8, ACC_WIDTH = 32)(
-input logic clk, rst, start,
+input logic clk, rst, start, pingpong, pingpongrst,
 output logic done,
 input logic [DATA_WIDTH-1:0] a_full [0:N-1][0:N-1],
 input logic [DATA_WIDTH-1:0] b_full [0:N-1][0:N-1],
-output logic [ACC_WIDTH-1:0] results [0:N-1][0:N-1]
+output logic [ACC_WIDTH-1:0] results1 [0:N-1][0:N-1],
+output logic [ACC_WIDTH-1:0] results2 [0:N-1][0:N-1]
     );
     
     localparam TOTAL_CYCLES = 3*N-2;

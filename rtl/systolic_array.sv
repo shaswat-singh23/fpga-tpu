@@ -23,13 +23,16 @@
 module systolic_array #(parameter N = 8, DATA_WIDTH = 16, ACC_WIDTH =32)(
 input logic clk,
 input logic rst,
+input logic [2*N-2:0] pingpongrst,
 input logic [2*N-2:0] enable,
-input logic [DATA_WIDTH-1:0] a_mat[0:N-1],
-input logic[DATA_WIDTH-1:0] b_mat [0:N-1],
-output logic [ACC_WIDTH-1:0] results [0:N-1][0:N-1]
+input logic [2*N-2:0] pingpong,
+input logic signed [DATA_WIDTH-1:0] a_mat[0:N-1],
+input logic signed [DATA_WIDTH-1:0] b_mat [0:N-1],
+output logic signed [ACC_WIDTH-1:0] results1 [0:N-1][0:N-1],
+output logic signed [ACC_WIDTH-1:0] results2 [0:N-1][0:N-1]
     );
-    logic [DATA_WIDTH-1:0] awire [0:N-1][0:N];
-    logic [DATA_WIDTH-1:0] bwire [0:N][0:N-1];
+    logic signed [DATA_WIDTH-1:0] awire [0:N-1][0:N];
+    logic signed [DATA_WIDTH-1:0] bwire [0:N][0:N-1];
     genvar i, j;
     generate
         for (i = 0; i<N; i++) begin:rows
@@ -42,7 +45,10 @@ output logic [ACC_WIDTH-1:0] results [0:N-1][0:N-1]
                       .enable(enable[i+j]),
                       .clk(clk),
                       .rst(rst),
-                      .result(results[i][j]),
+                      .pingpong(pingpong[i+j]),
+                      .pingpongrst(pingpongrst[i+j]),
+                      .result1(results1[i][j]),
+                      .result2(results2[i][j]),
                       .a_out(awire[i][j+1]),
                       .b_out(bwire[i+1][j])
                       );
