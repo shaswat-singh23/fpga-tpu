@@ -24,12 +24,10 @@ module instruction_unit #(
     parameter INSTR_ADDR_WIDTH = 7    // 128-deep instruction memory
 )(
     input  logic clk, rst,
-    input  logic run,                          // AXI-Lite go bit, level or pulse
-
+    input  logic run,                          // AXI-Lite go bit
     // instruction memory read port
     output logic [INSTR_ADDR_WIDTH-1:0] pc,
     input  logic [63:0] instr,
-
     // to gemm_sequencer (MATMUL)
     output logic mm_start,
     output logic [4:0]  mm_tiles,
@@ -37,161 +35,132 @@ module instruction_unit #(
     output logic mm_accumulate,
     output logic [13:0] mm_c_addr,
     input  logic mm_done,
-
-    // to load/store path (DataMover command gen) for LOAD_A/LOAD_B/STORE_C
+    // to load/store path
     output logic l_start, s_start,
-    output logic l_dest,                 // which of LOAD_A/LOAD_B
-    output logic [31:0] l_ddr_addr, s_ddr_addr,           // or wider, depending on DDR map
+    output logic l_dest,                 // 0 = LOAD_A (A_buf), 1 = LOAD_B (B_buf)
+    output logic [31:0] l_ddr_addr, s_ddr_addr,
     output logic [13:0] l_bram_addr, s_bram_addr,
     output logic [4:0]  l_length, s_length,
     input  logic l_done, s_done,
-
     // to activate lane
     output logic act_start,
     output logic [13:0] act_c_addr,
     output logic [4:0]  act_length,
     output logic [2:0]  act_mode,
     input  logic act_done,
-
     // to quantize lane
     output logic qz_start,
     output logic [13:0] qz_c_addr,
     output logic [13:0] qz_a_addr,
     output logic [4:0]  qz_length,
     input  logic qz_done,
-
     // status to PS
-    output logic program_done                  // all instructions executed, HALT reached
+    output logic program_done
 );
-    
+
     typedef enum logic [1:0] {IDLE, FETCH, DECODE, WAITING} state_t;
     state_t state;
-    
-    logic [2:0] curr_instr;
-    logic mm_start_pulse, l_start_pulse, s_start_pulse, act_start_pulse, qz_start_pulse;
-    logic mm_start_pulse_d, l_start_pulse_d, s_start_pulse_d, act_start_pulse_d, qz_start_pulse_d;
 
+    logic [2:0] curr_instr;
+
+    // opcode of the instruction currently on the bus
+    logic [2:0] op;
+    assign op = instr[63:61];
+
+    // ---- sequential control: PC, state, program_done, retire tracking ----
     always_ff @(posedge clk) begin
         if (rst) begin
-            state<= IDLE;
-            pc<=0;
-            mm_start_pulse_d <=0; l_start_pulse_d <=0; s_start_pulse_d<=0; act_start_pulse_d <=0; qz_start_pulse <=0;
+            state        <= IDLE;
+            pc           <= 0;
+            program_done <= 0;
+            curr_instr   <= 3'b111;
         end else begin
-            case (state) 
+            case (state)
                 IDLE: begin
-                    //program_done<=0;
                     if (run) begin
-                        program_done <=0;
-                        state <= DECODE;
+                        program_done <= 0;
+                        state        <= DECODE;   // pc=0 instr already valid, skip FETCH
                     end
                 end
                 FETCH: begin
-                    state <= DECODE;
+                    state <= DECODE;              // one-cycle BRAM-read-latency absorber
                 end
                 DECODE: begin
-                    if (instr[63:61] == 3'b000 || instr[63:61] == 3'b001) begin
-                        l_start_pulse_d <=1;
-                    end else if (instr[63:61] == 3'b010) begin
-                        mm_start_pulse_d<=1;
-                    end else if (instr[63:61] == 3'b011) begin
-                        s_start_pulse_d<=1;
-                    end else if (instr[63:61] == 3'b100) begin
-                        act_start_pulse_d<=1;
-                    end else if (instr[63:61] == 3'b101) begin
-                        qz_start_pulse_d<=1;
-                    end 
-                
-                    curr_instr <= instr[63:61];
-                    if (instr[63:61] == 3'b110) begin
-                        state <= IDLE;
+                    curr_instr <= op;
+                    if (op == 3'b110) begin       // HALT
                         program_done <= 1;
-                    end else 
+                        state        <= IDLE;
+                    end else begin
                         state <= WAITING;
+                    end
                 end
                 WAITING: begin
-                //if condition to determine which sample is being waited on
-                    if (curr_instr == 3'b000 && l_done || 
-                        curr_instr == 3'b001 && l_done ||
-                        curr_instr == 3'b010 && mm_done ||
-                        curr_instr == 3'b011 && s_done ||
-                        curr_instr == 3'b100 && act_done ||
-                        curr_instr == 3'b101 && qz_done) begin
+                    if ((curr_instr == 3'b000 && l_done) ||
+                        (curr_instr == 3'b001 && l_done) ||
+                        (curr_instr == 3'b010 && mm_done) ||
+                        (curr_instr == 3'b011 && s_done) ||
+                        (curr_instr == 3'b100 && act_done) ||
+                        (curr_instr == 3'b101 && qz_done)) begin
+                        pc    <= pc + 1;
                         state <= FETCH;
-                        pc <= pc+1;
                     end
                 end
             endcase
         end
     end
-    
 
-    
+    // ---- combinational decode / dispatch ----
+    // start pulses are one cycle wide because DECODE lasts exactly one cycle.
     always_comb begin
-        //combinational decode logic
-        assign mm_start = 0;
-        assign mm_tiles = 0;
-        assign mm_a_addr = 0;
-        assign mm_b_addr = 0;
-        assign mm_c_addr = 0;
-        assign l_start = 0;
-        assign s_start = 0;
-        assign l_ddr_addr = 0;
-        assign l_bram_addr = 0;
-        assign s_bram_addr =0;
-        assign s_ddr_addr = 0;
-        assign l_length = 0;
-        assign s_length = 0;
-        assign l_dest = (instr[63:61]==3'b001);
-        assign act_start = 0;
-        assign act_c_addr = 0;
-        assign act_length = 0;
-        assign act_mode = 0;
-        assign qz_start = 0;
-        assign qz_c_addr = 0;
-        assign qz_a_addr = 0;
-        assign qz_length = 0;
-        assign mm_accumulate = 0;
-        
-        if (instr[63:61] == 3'b000) begin
-            assign l_start_pulse = 1;
-            assign l_start = l_start_pulse && !l_start_pulse_d;
-            assign l_ddr_addr = instr[60:29];
-            assign l_bram_addr = instr[28:15];
-            assign l_length = instr[14:10];
-        end else if (instr[63:61] == 3'b001) begin
-            assign l_start_pulse = 1;
-            assign l_start = l_start_pulse && !l_start_pulse_d;
-            assign l_ddr_addr = instr[60:29];
-            assign l_bram_addr = instr[28:15];
-            assign l_length = instr[14:10];
-        end else if (instr[63:61] == 3'b010) begin
-            assign mm_start_pulse = 1;
-            assign mm_start = mm_start_pulse && !mm_start_pulse_d;
-            assign mm_tiles = instr[18:14];
-            assign mm_a_addr = instr[60:47];
-            assign mm_b_addr = instr[46:33];
-            assign mm_c_addr = instr[32:19];
-            assign mm_accumulate = instr[13];
-        end else if (instr[63:61] == 3'b011) begin
-            assign s_start_pulse = 1;
-            assign s_start = s_start_pulse && !s_start_pulse_d;
-            assign s_ddr_addr = instr[60:29];
-            assign s_bram_addr = instr[28:15];
-            assign s_length = instr[14:10];
-        end else if (instr[63:61] == 3'b100) begin
-            assign act_start_pulse=1;
-            assign act_start = act_start_pulse && !act_start_pulse_d;
-            assign act_c_addr = instr[60:47];
-            assign act_length = instr[18:14];
-            assign act_mode = instr[13:11];
-        end else if (instr[63:61] == 3'b101) begin
-            assign qz_start_pulse =1;
-            assign qz_start = qz_start_pulse && !qz_start_pulse_d;
-            assign qz_c_addr = instr[60:47];
-            assign qz_a_addr = instr[32:19];
-            assign qz_length = instr[18:14]; 
-        end
+        // defaults
+        mm_start = 0; mm_tiles = 0; mm_a_addr = 0; mm_b_addr = 0;
+        mm_c_addr = 0; mm_accumulate = 0;
+        l_start = 0; s_start = 0;
+        l_ddr_addr = 0; s_ddr_addr = 0;
+        l_bram_addr = 0; s_bram_addr = 0;
+        l_length = 0; s_length = 0;
+        act_start = 0; act_c_addr = 0; act_length = 0; act_mode = 0;
+        qz_start = 0; qz_c_addr = 0; qz_a_addr = 0; qz_length = 0;
+
+        // l_dest is opcode-derived, valid whenever the bus holds a LOAD
+        l_dest = (op == 3'b001);
+
+        // field extraction + start pulse, only during the single DECODE cycle
+        case (op)
+            3'b000, 3'b001: begin              // LOAD_A / LOAD_B
+                l_ddr_addr  = instr[60:29];
+                l_bram_addr = instr[28:15];
+                l_length    = instr[14:10];
+                l_start     = (state == DECODE);
+            end
+            3'b010: begin                      // MATMUL
+                mm_a_addr     = instr[60:47];
+                mm_b_addr     = instr[46:33];
+                mm_c_addr     = instr[32:19];
+                mm_tiles      = instr[18:14];
+                mm_accumulate = instr[13];
+                mm_start      = (state == DECODE);
+            end
+            3'b011: begin                      // STORE_C
+                s_ddr_addr  = instr[60:29];
+                s_bram_addr = instr[28:15];
+                s_length    = instr[14:10];
+                s_start     = (state == DECODE);
+            end
+            3'b100: begin                      // ACTIVATE
+                act_c_addr = instr[60:47];
+                act_length = instr[18:14];
+                act_mode   = instr[13:11];
+                act_start  = (state == DECODE);
+            end
+            3'b101: begin                      // QUANTIZE
+                qz_c_addr = instr[60:47];
+                qz_a_addr = instr[32:19];
+                qz_length = instr[18:14];
+                qz_start  = (state == DECODE);
+            end
+            default: ;                         // HALT / reserved: no dispatch
+        endcase
     end
-    
-    
+
 endmodule
