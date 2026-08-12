@@ -131,13 +131,12 @@ set bCheckIPs 1
 if { $bCheckIPs == 1 } {
    set list_check_ips "\ 
 xilinx.com:ip:processing_system7:5.5\
-xilinx.com:user:feeder_sequencer:1.0\
-xilinx.com:user:pipeline_ctrl:1.0\
-xilinx.com:ip:axi_dma:7.1\
-xilinx.com:ip:smartconnect:1.0\
+xilinx.com:user:accelerator_top:1.0\
+xilinx.com:user:newip:1.0\
+xilinx.com:ip:axi_datamover:5.1\
+xilinx.com:ip:axis_dwidth_converter:1.1\
 xilinx.com:ip:proc_sys_reset:5.0\
-xilinx.com:user:matrix_loader:1.0\
-xilinx.com:user:result_reader:1.0\
+xilinx.com:ip:smartconnect:1.0\
 "
 
    set list_ips_missing ""
@@ -218,7 +217,7 @@ proc create_root_design { parentCell } {
     CONFIG.PCW_ACT_DCI_PERIPHERAL_FREQMHZ {10.096154} \
     CONFIG.PCW_ACT_ENET0_PERIPHERAL_FREQMHZ {125.000000} \
     CONFIG.PCW_ACT_ENET1_PERIPHERAL_FREQMHZ {10.000000} \
-    CONFIG.PCW_ACT_FPGA0_PERIPHERAL_FREQMHZ {100.000000} \
+    CONFIG.PCW_ACT_FPGA0_PERIPHERAL_FREQMHZ {62.500000} \
     CONFIG.PCW_ACT_FPGA1_PERIPHERAL_FREQMHZ {10.000000} \
     CONFIG.PCW_ACT_FPGA2_PERIPHERAL_FREQMHZ {10.000000} \
     CONFIG.PCW_ACT_FPGA3_PERIPHERAL_FREQMHZ {10.000000} \
@@ -246,7 +245,7 @@ proc create_root_design { parentCell } {
     CONFIG.PCW_CAN1_PERIPHERAL_CLKSRC {External} \
     CONFIG.PCW_CAN_PERIPHERAL_CLKSRC {IO PLL} \
     CONFIG.PCW_CAN_PERIPHERAL_VALID {0} \
-    CONFIG.PCW_CLK0_FREQ {100000000} \
+    CONFIG.PCW_CLK0_FREQ {62500000} \
     CONFIG.PCW_CLK1_FREQ {10000000} \
     CONFIG.PCW_CLK2_FREQ {10000000} \
     CONFIG.PCW_CLK3_FREQ {10000000} \
@@ -346,7 +345,7 @@ proc create_root_design { parentCell } {
     CONFIG.PCW_FCLK2_PERIPHERAL_CLKSRC {IO PLL} \
     CONFIG.PCW_FCLK3_PERIPHERAL_CLKSRC {IO PLL} \
     CONFIG.PCW_FCLK_CLK0_BUF {TRUE} \
-    CONFIG.PCW_FPGA0_PERIPHERAL_FREQMHZ {100} \
+    CONFIG.PCW_FPGA0_PERIPHERAL_FREQMHZ {62} \
     CONFIG.PCW_FPGA1_PERIPHERAL_FREQMHZ {50} \
     CONFIG.PCW_FPGA2_PERIPHERAL_FREQMHZ {50} \
     CONFIG.PCW_FPGA3_PERIPHERAL_FREQMHZ {50} \
@@ -357,7 +356,7 @@ proc create_root_design { parentCell } {
     CONFIG.PCW_GPIO_MIO_GPIO_ENABLE {1} \
     CONFIG.PCW_GPIO_MIO_GPIO_IO {MIO} \
     CONFIG.PCW_GPIO_PERIPHERAL_ENABLE {0} \
-    CONFIG.PCW_I2C_RESET_ENABLE {1} \
+    CONFIG.PCW_I2C_RESET_ENABLE {0} \
     CONFIG.PCW_I2C_RESET_POLARITY {Active Low} \
     CONFIG.PCW_IMPORT_BOARD_PRESET {None} \
     CONFIG.PCW_INCLUDE_ACP_TRANS_CHECK {0} \
@@ -573,7 +572,7 @@ proc create_root_design { parentCell } {
     CONFIG.PCW_PACKAGE_NAME {clg400} \
     CONFIG.PCW_PCAP_PERIPHERAL_CLKSRC {IO PLL} \
     CONFIG.PCW_PCAP_PERIPHERAL_FREQMHZ {200} \
-    CONFIG.PCW_PERIPHERAL_BOARD_PRESET {part0} \
+    CONFIG.PCW_PERIPHERAL_BOARD_PRESET {None} \
     CONFIG.PCW_PLL_BYPASSMODE_ENABLE {0} \
     CONFIG.PCW_PRESET_BANK0_VOLTAGE {LVCMOS 3.3V} \
     CONFIG.PCW_PRESET_BANK1_VOLTAGE {LVCMOS 1.8V} \
@@ -731,9 +730,9 @@ proc create_root_design { parentCell } {
     CONFIG.PCW_USE_S_AXI_GP0 {0} \
     CONFIG.PCW_USE_S_AXI_GP1 {0} \
     CONFIG.PCW_USE_S_AXI_HP0 {1} \
-    CONFIG.PCW_USE_S_AXI_HP1 {1} \
-    CONFIG.PCW_USE_S_AXI_HP2 {1} \
-    CONFIG.PCW_USE_S_AXI_HP3 {1} \
+    CONFIG.PCW_USE_S_AXI_HP1 {0} \
+    CONFIG.PCW_USE_S_AXI_HP2 {0} \
+    CONFIG.PCW_USE_S_AXI_HP3 {0} \
     CONFIG.PCW_USE_TRACE {0} \
     CONFIG.PCW_VALUE_SILVERSION {3} \
     CONFIG.PCW_WDT_PERIPHERAL_CLKSRC {CPU_1X} \
@@ -741,184 +740,141 @@ proc create_root_design { parentCell } {
   ] $processing_system7_0
 
 
-  # Create instance: feeder_sequencer_0, and set properties
-  set feeder_sequencer_0 [ create_bd_cell -type ip -vlnv xilinx.com:user:feeder_sequencer:1.0 feeder_sequencer_0 ]
+  # Create instance: accelerator_top_0, and set properties
+  set accelerator_top_0 [ create_bd_cell -type ip -vlnv xilinx.com:user:accelerator_top:1.0 accelerator_top_0 ]
 
-  # Create instance: pipeline_ctrl_0, and set properties
-  set pipeline_ctrl_0 [ create_bd_cell -type ip -vlnv xilinx.com:user:pipeline_ctrl:1.0 pipeline_ctrl_0 ]
+  # Create instance: newip_0, and set properties
+  set newip_0 [ create_bd_cell -type ip -vlnv xilinx.com:user:newip:1.0 newip_0 ]
 
-  # Create instance: axi_dma_0, and set properties
-  set axi_dma_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_dma:7.1 axi_dma_0 ]
+  # Create instance: axi_datamover_0, and set properties
+  set axi_datamover_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_datamover:5.1 axi_datamover_0 ]
   set_property -dict [list \
-    CONFIG.c_include_s2mm {0} \
-    CONFIG.c_include_sg {0} \
+    CONFIG.c_dummy {1} \
     CONFIG.c_m_axi_mm2s_data_width {64} \
     CONFIG.c_m_axis_mm2s_tdata_width {64} \
-    CONFIG.c_sg_length_width {8} \
-  ] $axi_dma_0
-
-
-  # Create instance: axi_dma_1, and set properties
-  set axi_dma_1 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_dma:7.1 axi_dma_1 ]
-  set_property -dict [list \
-    CONFIG.c_include_s2mm {0} \
-    CONFIG.c_include_sg {0} \
-    CONFIG.c_m_axi_mm2s_data_width {64} \
-    CONFIG.c_m_axis_mm2s_tdata_width {64} \
+    CONFIG.c_mm2s_btt_used {23} \
     CONFIG.c_mm2s_burst_size {16} \
-    CONFIG.c_sg_length_width {8} \
-  ] $axi_dma_1
+    CONFIG.c_s2mm_btt_used {23} \
+  ] $axi_datamover_0
 
 
-  # Create instance: axi_dma_2, and set properties
-  set axi_dma_2 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_dma:7.1 axi_dma_2 ]
+  # Create instance: axis_dwidth_converter_0, and set properties
+  set axis_dwidth_converter_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axis_dwidth_converter:1.1 axis_dwidth_converter_0 ]
   set_property -dict [list \
-    CONFIG.c_include_mm2s {0} \
-    CONFIG.c_include_sg {0} \
-    CONFIG.c_m_axi_s2mm_data_width {64} \
-    CONFIG.c_s_axis_s2mm_tdata_width {64} \
-    CONFIG.c_sg_length_width {8} \
-  ] $axi_dma_2
-
-
-  # Create instance: smartconnect_0, and set properties
-  set smartconnect_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:smartconnect:1.0 smartconnect_0 ]
-  set_property CONFIG.NUM_SI {1} $smartconnect_0
-
-
-  # Create instance: axi_dma_3, and set properties
-  set axi_dma_3 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_dma:7.1 axi_dma_3 ]
-  set_property -dict [list \
-    CONFIG.c_include_mm2s {0} \
-    CONFIG.c_include_sg {0} \
-    CONFIG.c_m_axi_s2mm_data_width {64} \
-    CONFIG.c_s_axis_s2mm_tdata_width {64} \
-    CONFIG.c_sg_length_width {8} \
-  ] $axi_dma_3
-
-
-  # Create instance: smartconnect_1, and set properties
-  set smartconnect_1 [ create_bd_cell -type ip -vlnv xilinx.com:ip:smartconnect:1.0 smartconnect_1 ]
-  set_property CONFIG.NUM_SI {1} $smartconnect_1
-
-
-  # Create instance: smartconnect_2, and set properties
-  set smartconnect_2 [ create_bd_cell -type ip -vlnv xilinx.com:ip:smartconnect:1.0 smartconnect_2 ]
-  set_property CONFIG.NUM_SI {1} $smartconnect_2
-
-
-  # Create instance: smartconnect_3, and set properties
-  set smartconnect_3 [ create_bd_cell -type ip -vlnv xilinx.com:ip:smartconnect:1.0 smartconnect_3 ]
-  set_property CONFIG.NUM_SI {1} $smartconnect_3
-
-
-  # Create instance: axi_smc, and set properties
-  set axi_smc [ create_bd_cell -type ip -vlnv xilinx.com:ip:smartconnect:1.0 axi_smc ]
-  set_property -dict [list \
-    CONFIG.NUM_MI {4} \
-    CONFIG.NUM_SI {1} \
-  ] $axi_smc
+    CONFIG.HAS_TLAST {1} \
+    CONFIG.M_TDATA_NUM_BYTES {8} \
+    CONFIG.S_TDATA_NUM_BYTES {32} \
+  ] $axis_dwidth_converter_0
 
 
   # Create instance: rst_ps7_0_100M, and set properties
   set rst_ps7_0_100M [ create_bd_cell -type ip -vlnv xilinx.com:ip:proc_sys_reset:5.0 rst_ps7_0_100M ]
 
-  # Create instance: matrix_loader_0, and set properties
-  set matrix_loader_0 [ create_bd_cell -type ip -vlnv xilinx.com:user:matrix_loader:1.0 matrix_loader_0 ]
+  # Create instance: axi_smc, and set properties
+  set axi_smc [ create_bd_cell -type ip -vlnv xilinx.com:ip:smartconnect:1.0 axi_smc ]
+  set_property CONFIG.NUM_SI {1} $axi_smc
 
-  # Create instance: result_reader_0, and set properties
-  set result_reader_0 [ create_bd_cell -type ip -vlnv xilinx.com:user:result_reader:1.0 result_reader_0 ]
+
+  # Create instance: axi_mem_intercon, and set properties
+  set axi_mem_intercon [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_interconnect:2.1 axi_mem_intercon ]
+  set_property -dict [list \
+    CONFIG.NUM_MI {1} \
+    CONFIG.NUM_SI {2} \
+  ] $axi_mem_intercon
+
 
   # Create interface connections
-  connect_bd_intf_net -intf_net axi_dma_0_M_AXIS_MM2S [get_bd_intf_pins axi_dma_0/M_AXIS_MM2S] [get_bd_intf_pins matrix_loader_0/s_axis_a]
-  connect_bd_intf_net -intf_net axi_dma_0_M_AXI_MM2S [get_bd_intf_pins smartconnect_0/S00_AXI] [get_bd_intf_pins axi_dma_0/M_AXI_MM2S]
-  connect_bd_intf_net -intf_net axi_dma_1_M_AXIS_MM2S [get_bd_intf_pins axi_dma_1/M_AXIS_MM2S] [get_bd_intf_pins matrix_loader_0/s_axis_b]
-  connect_bd_intf_net -intf_net axi_dma_1_M_AXI_MM2S [get_bd_intf_pins smartconnect_1/S00_AXI] [get_bd_intf_pins axi_dma_1/M_AXI_MM2S]
-  connect_bd_intf_net -intf_net axi_dma_2_M_AXI_S2MM [get_bd_intf_pins smartconnect_2/S00_AXI] [get_bd_intf_pins axi_dma_2/M_AXI_S2MM]
-  connect_bd_intf_net -intf_net axi_dma_3_M_AXI_S2MM [get_bd_intf_pins smartconnect_3/S00_AXI] [get_bd_intf_pins axi_dma_3/M_AXI_S2MM]
-  connect_bd_intf_net -intf_net axi_smc_M00_AXI [get_bd_intf_pins axi_smc/M00_AXI] [get_bd_intf_pins axi_dma_0/S_AXI_LITE]
-  connect_bd_intf_net -intf_net axi_smc_M01_AXI [get_bd_intf_pins axi_smc/M01_AXI] [get_bd_intf_pins axi_dma_1/S_AXI_LITE]
-  connect_bd_intf_net -intf_net axi_smc_M02_AXI [get_bd_intf_pins axi_smc/M02_AXI] [get_bd_intf_pins axi_dma_2/S_AXI_LITE]
-  connect_bd_intf_net -intf_net axi_smc_M03_AXI [get_bd_intf_pins axi_smc/M03_AXI] [get_bd_intf_pins axi_dma_3/S_AXI_LITE]
+  connect_bd_intf_net -intf_net accelerator_top_0_mm2s_cmd [get_bd_intf_pins accelerator_top_0/mm2s_cmd] [get_bd_intf_pins axi_datamover_0/S_AXIS_MM2S_CMD]
+  connect_bd_intf_net -intf_net accelerator_top_0_s2mm [get_bd_intf_pins accelerator_top_0/s2mm] [get_bd_intf_pins axis_dwidth_converter_0/S_AXIS]
+  connect_bd_intf_net -intf_net accelerator_top_0_s2mm_cmd [get_bd_intf_pins accelerator_top_0/s2mm_cmd] [get_bd_intf_pins axi_datamover_0/S_AXIS_S2MM_CMD]
+  connect_bd_intf_net -intf_net axi_datamover_0_M_AXIS_MM2S [get_bd_intf_pins accelerator_top_0/mm2s] [get_bd_intf_pins axi_datamover_0/M_AXIS_MM2S]
+  connect_bd_intf_net -intf_net axi_datamover_0_M_AXIS_MM2S_STS [get_bd_intf_pins accelerator_top_0/mm2s_sts] [get_bd_intf_pins axi_datamover_0/M_AXIS_MM2S_STS]
+  connect_bd_intf_net -intf_net axi_datamover_0_M_AXIS_S2MM_STS [get_bd_intf_pins accelerator_top_0/s2mm_sts] [get_bd_intf_pins axi_datamover_0/M_AXIS_S2MM_STS]
+  connect_bd_intf_net -intf_net axi_datamover_0_M_AXI_MM2S [get_bd_intf_pins axi_datamover_0/M_AXI_MM2S] [get_bd_intf_pins axi_mem_intercon/S00_AXI]
+  connect_bd_intf_net -intf_net axi_datamover_0_M_AXI_S2MM [get_bd_intf_pins axi_datamover_0/M_AXI_S2MM] [get_bd_intf_pins axi_mem_intercon/S01_AXI]
+  connect_bd_intf_net -intf_net axi_mem_intercon_M00_AXI [get_bd_intf_pins axi_mem_intercon/M00_AXI] [get_bd_intf_pins processing_system7_0/S_AXI_HP0]
+  connect_bd_intf_net -intf_net axi_smc_M00_AXI [get_bd_intf_pins axi_smc/M00_AXI] [get_bd_intf_pins newip_0/S00_AXI]
+  connect_bd_intf_net -intf_net axis_dwidth_converter_0_M_AXIS [get_bd_intf_pins axis_dwidth_converter_0/M_AXIS] [get_bd_intf_pins axi_datamover_0/S_AXIS_S2MM]
   connect_bd_intf_net -intf_net processing_system7_0_DDR [get_bd_intf_ports DDR] [get_bd_intf_pins processing_system7_0/DDR]
   connect_bd_intf_net -intf_net processing_system7_0_FIXED_IO [get_bd_intf_ports FIXED_IO] [get_bd_intf_pins processing_system7_0/FIXED_IO]
   connect_bd_intf_net -intf_net processing_system7_0_M_AXI_GP0 [get_bd_intf_pins processing_system7_0/M_AXI_GP0] [get_bd_intf_pins axi_smc/S00_AXI]
-  connect_bd_intf_net -intf_net result_reader_0_m_axis_one [get_bd_intf_pins result_reader_0/m_axis_one] [get_bd_intf_pins axi_dma_2/S_AXIS_S2MM]
-  connect_bd_intf_net -intf_net result_reader_0_m_axis_two [get_bd_intf_pins result_reader_0/m_axis_two] [get_bd_intf_pins axi_dma_3/S_AXIS_S2MM]
-  connect_bd_intf_net -intf_net smartconnect_0_M00_AXI [get_bd_intf_pins smartconnect_0/M00_AXI] [get_bd_intf_pins processing_system7_0/S_AXI_HP0]
-  connect_bd_intf_net -intf_net smartconnect_1_M00_AXI [get_bd_intf_pins smartconnect_1/M00_AXI] [get_bd_intf_pins processing_system7_0/S_AXI_HP1]
-  connect_bd_intf_net -intf_net smartconnect_2_M00_AXI [get_bd_intf_pins smartconnect_2/M00_AXI] [get_bd_intf_pins processing_system7_0/S_AXI_HP2]
-  connect_bd_intf_net -intf_net smartconnect_3_M00_AXI [get_bd_intf_pins smartconnect_3/M00_AXI] [get_bd_intf_pins processing_system7_0/S_AXI_HP3]
 
   # Create port connections
-  connect_bd_net -net feeder_sequencer_0_done  [get_bd_pins feeder_sequencer_0/done] \
-  [get_bd_pins pipeline_ctrl_0/calc_done] \
-  [get_bd_pins result_reader_0/start_read]
-  connect_bd_net -net feeder_sequencer_0_results  [get_bd_pins feeder_sequencer_0/results] \
-  [get_bd_pins result_reader_0/results]
-  connect_bd_net -net matrix_loader_0_a_full  [get_bd_pins matrix_loader_0/a_full] \
-  [get_bd_pins feeder_sequencer_0/a_full]
-  connect_bd_net -net matrix_loader_0_b_full  [get_bd_pins matrix_loader_0/b_full] \
-  [get_bd_pins feeder_sequencer_0/b_full]
-  connect_bd_net -net matrix_loader_0_load_done  [get_bd_pins matrix_loader_0/load_done] \
-  [get_bd_pins pipeline_ctrl_0/load_done]
-  connect_bd_net -net pipeline_ctrl_0_feeder_start  [get_bd_pins pipeline_ctrl_0/feeder_start] \
-  [get_bd_pins feeder_sequencer_0/start]
-  connect_bd_net -net pipeline_ctrl_0_loader_consumed  [get_bd_pins pipeline_ctrl_0/loader_consumed] \
-  [get_bd_pins matrix_loader_0/consumed]
+  connect_bd_net -net accelerator_top_0_dbg_cmd_done  [get_bd_pins accelerator_top_0/dbg_cmd_done] \
+  [get_bd_pins newip_0/dbg_cmd_done_in]
+  connect_bd_net -net accelerator_top_0_dbg_cmd_err  [get_bd_pins accelerator_top_0/dbg_cmd_err] \
+  [get_bd_pins newip_0/dbg_cmd_err_in]
+  connect_bd_net -net accelerator_top_0_dbg_cmd_state  [get_bd_pins accelerator_top_0/dbg_cmd_state] \
+  [get_bd_pins newip_0/dbg_cmd_state_in]
+  connect_bd_net -net accelerator_top_0_dbg_rdata  [get_bd_pins accelerator_top_0/dbg_rdata] \
+  [get_bd_pins newip_0/dbg_rdata_in]
+  connect_bd_net -net accelerator_top_0_dbg_store_adapter_done  [get_bd_pins accelerator_top_0/dbg_store_adapter_done] \
+  [get_bd_pins newip_0/dbg_store_adapter_done_in]
+  connect_bd_net -net accelerator_top_0_dbg_store_cmd_done  [get_bd_pins accelerator_top_0/dbg_store_cmd_done] \
+  [get_bd_pins newip_0/dbg_store_cmd_done_in]
+  connect_bd_net -net accelerator_top_0_dbg_store_cmd_err  [get_bd_pins accelerator_top_0/dbg_store_cmd_err] \
+  [get_bd_pins newip_0/dbg_store_cmd_err_in]
+  connect_bd_net -net accelerator_top_0_dbg_store_cmd_state  [get_bd_pins accelerator_top_0/dbg_store_cmd_state] \
+  [get_bd_pins newip_0/dbg_store_cmd_state_in]
+  connect_bd_net -net accelerator_top_0_instr_rdata  [get_bd_pins accelerator_top_0/instr_rdata] \
+  [get_bd_pins newip_0/instr_rdata_in]
+  connect_bd_net -net accelerator_top_0_program_done  [get_bd_pins accelerator_top_0/program_done] \
+  [get_bd_pins newip_0/program_done_in]
+  connect_bd_net -net newip_0_dbg_cmd_ddr_addr_out  [get_bd_pins newip_0/dbg_cmd_ddr_addr_out] \
+  [get_bd_pins accelerator_top_0/dbg_cmd_ddr_addr]
+  connect_bd_net -net newip_0_dbg_cmd_length_out  [get_bd_pins newip_0/dbg_cmd_length_out] \
+  [get_bd_pins accelerator_top_0/dbg_cmd_length]
+  connect_bd_net -net newip_0_dbg_cmd_start_out  [get_bd_pins newip_0/dbg_cmd_start_out] \
+  [get_bd_pins accelerator_top_0/dbg_cmd_start]
+  connect_bd_net -net newip_0_dbg_raddr_out  [get_bd_pins newip_0/dbg_raddr_out] \
+  [get_bd_pins accelerator_top_0/dbg_raddr]
+  connect_bd_net -net newip_0_instr_raddr_out  [get_bd_pins newip_0/instr_raddr_out] \
+  [get_bd_pins accelerator_top_0/instr_raddr]
+  connect_bd_net -net newip_0_instr_waddr_out  [get_bd_pins newip_0/instr_waddr_out] \
+  [get_bd_pins accelerator_top_0/instr_waddr]
+  connect_bd_net -net newip_0_instr_wdata_out  [get_bd_pins newip_0/instr_wdata_out] \
+  [get_bd_pins accelerator_top_0/instr_wdata]
+  connect_bd_net -net newip_0_instr_we_pulse  [get_bd_pins newip_0/instr_we_pulse] \
+  [get_bd_pins accelerator_top_0/instr_we]
+  connect_bd_net -net newip_0_run_out  [get_bd_pins newip_0/run_out] \
+  [get_bd_pins accelerator_top_0/run]
   connect_bd_net -net processing_system7_0_FCLK_CLK0  [get_bd_pins processing_system7_0/FCLK_CLK0] \
+  [get_bd_pins axi_datamover_0/m_axi_mm2s_aclk] \
+  [get_bd_pins axi_datamover_0/m_axis_mm2s_cmdsts_aclk] \
+  [get_bd_pins axis_dwidth_converter_0/aclk] \
+  [get_bd_pins axi_datamover_0/m_axis_s2mm_cmdsts_awclk] \
+  [get_bd_pins rst_ps7_0_100M/slowest_sync_clk] \
   [get_bd_pins processing_system7_0/M_AXI_GP0_ACLK] \
   [get_bd_pins axi_smc/aclk] \
-  [get_bd_pins axi_dma_0/s_axi_lite_aclk] \
-  [get_bd_pins rst_ps7_0_100M/slowest_sync_clk] \
-  [get_bd_pins axi_dma_1/s_axi_lite_aclk] \
-  [get_bd_pins axi_dma_2/s_axi_lite_aclk] \
-  [get_bd_pins axi_dma_3/s_axi_lite_aclk] \
-  [get_bd_pins feeder_sequencer_0/clk] \
-  [get_bd_pins pipeline_ctrl_0/clk] \
+  [get_bd_pins axi_mem_intercon/S00_ACLK] \
   [get_bd_pins processing_system7_0/S_AXI_HP0_ACLK] \
-  [get_bd_pins smartconnect_0/aclk] \
-  [get_bd_pins processing_system7_0/S_AXI_HP1_ACLK] \
-  [get_bd_pins smartconnect_1/aclk] \
-  [get_bd_pins processing_system7_0/S_AXI_HP2_ACLK] \
-  [get_bd_pins smartconnect_2/aclk] \
-  [get_bd_pins processing_system7_0/S_AXI_HP3_ACLK] \
-  [get_bd_pins smartconnect_3/aclk] \
-  [get_bd_pins axi_dma_0/m_axi_mm2s_aclk] \
-  [get_bd_pins axi_dma_1/m_axi_mm2s_aclk] \
-  [get_bd_pins axi_dma_2/m_axi_s2mm_aclk] \
-  [get_bd_pins axi_dma_3/m_axi_s2mm_aclk] \
-  [get_bd_pins matrix_loader_0/clk] \
-  [get_bd_pins result_reader_0/clk]
+  [get_bd_pins axi_mem_intercon/M00_ACLK] \
+  [get_bd_pins axi_mem_intercon/ACLK] \
+  [get_bd_pins axi_datamover_0/m_axi_s2mm_aclk] \
+  [get_bd_pins axi_mem_intercon/S01_ACLK] \
+  [get_bd_pins newip_0/s00_axi_aclk] \
+  [get_bd_pins accelerator_top_0/clk]
   connect_bd_net -net processing_system7_0_FCLK_RESET0_N  [get_bd_pins processing_system7_0/FCLK_RESET0_N] \
   [get_bd_pins rst_ps7_0_100M/ext_reset_in]
-  connect_bd_net -net result_reader_0_read_done  [get_bd_pins result_reader_0/read_done] \
-  [get_bd_pins pipeline_ctrl_0/read_done]
   connect_bd_net -net rst_ps7_0_100M_peripheral_aresetn  [get_bd_pins rst_ps7_0_100M/peripheral_aresetn] \
-  [get_bd_pins axi_dma_1/axi_resetn] \
-  [get_bd_pins axi_dma_2/axi_resetn] \
+  [get_bd_pins axi_datamover_0/m_axi_s2mm_aresetn] \
+  [get_bd_pins axi_datamover_0/m_axi_mm2s_aresetn] \
   [get_bd_pins axi_smc/aresetn] \
-  [get_bd_pins axi_dma_0/axi_resetn] \
-  [get_bd_pins axi_dma_3/axi_resetn] \
-  [get_bd_pins smartconnect_0/aresetn] \
-  [get_bd_pins smartconnect_1/aresetn] \
-  [get_bd_pins smartconnect_2/aresetn] \
-  [get_bd_pins smartconnect_3/aresetn]
+  [get_bd_pins axi_datamover_0/m_axis_mm2s_cmdsts_aresetn] \
+  [get_bd_pins axi_datamover_0/m_axis_s2mm_cmdsts_aresetn] \
+  [get_bd_pins axis_dwidth_converter_0/aresetn] \
+  [get_bd_pins axi_mem_intercon/S01_ARESETN] \
+  [get_bd_pins axi_mem_intercon/M00_ARESETN] \
+  [get_bd_pins axi_mem_intercon/S00_ARESETN] \
+  [get_bd_pins axi_mem_intercon/ARESETN] \
+  [get_bd_pins newip_0/s00_axi_aresetn]
   connect_bd_net -net rst_ps7_0_100M_peripheral_reset  [get_bd_pins rst_ps7_0_100M/peripheral_reset] \
-  [get_bd_pins feeder_sequencer_0/rst] \
-  [get_bd_pins pipeline_ctrl_0/rst] \
-  [get_bd_pins matrix_loader_0/rst] \
-  [get_bd_pins result_reader_0/rst]
+  [get_bd_pins accelerator_top_0/rst]
 
   # Create address segments
-  assign_bd_address -offset 0x40400000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs axi_dma_0/S_AXI_LITE/Reg] -force
-  assign_bd_address -offset 0x40410000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs axi_dma_1/S_AXI_LITE/Reg] -force
-  assign_bd_address -offset 0x40420000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs axi_dma_2/S_AXI_LITE/Reg] -force
-  assign_bd_address -offset 0x40430000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs axi_dma_3/S_AXI_LITE/Reg] -force
-  assign_bd_address -offset 0x00000000 -range 0x20000000 -target_address_space [get_bd_addr_spaces axi_dma_0/Data_MM2S] [get_bd_addr_segs processing_system7_0/S_AXI_HP0/HP0_DDR_LOWOCM] -force
-  assign_bd_address -offset 0x00000000 -range 0x20000000 -target_address_space [get_bd_addr_spaces axi_dma_1/Data_MM2S] [get_bd_addr_segs processing_system7_0/S_AXI_HP1/HP1_DDR_LOWOCM] -force
-  assign_bd_address -offset 0x00000000 -range 0x20000000 -target_address_space [get_bd_addr_spaces axi_dma_2/Data_S2MM] [get_bd_addr_segs processing_system7_0/S_AXI_HP2/HP2_DDR_LOWOCM] -force
-  assign_bd_address -offset 0x00000000 -range 0x20000000 -target_address_space [get_bd_addr_spaces axi_dma_3/Data_S2MM] [get_bd_addr_segs processing_system7_0/S_AXI_HP3/HP3_DDR_LOWOCM] -force
+  assign_bd_address -offset 0x43C00000 -range 0x00010000 -target_address_space [get_bd_addr_spaces processing_system7_0/Data] [get_bd_addr_segs newip_0/S00_AXI/S00_AXI_reg] -force
+  assign_bd_address -offset 0x00000000 -range 0x20000000 -target_address_space [get_bd_addr_spaces axi_datamover_0/Data_MM2S] [get_bd_addr_segs processing_system7_0/S_AXI_HP0/HP0_DDR_LOWOCM] -force
+  assign_bd_address -offset 0x00000000 -range 0x20000000 -target_address_space [get_bd_addr_spaces axi_datamover_0/Data_S2MM] [get_bd_addr_segs processing_system7_0/S_AXI_HP0/HP0_DDR_LOWOCM] -force
 
 
   # Restore current instance

@@ -23,12 +23,16 @@
 module gemm_sequencer #(parameter MAX_N = 128, DATA_WIDTH = 8, ACC_WIDTH=32, ARRAY_N=8)(
 input logic clk, rst, start,
 input logic [4:0] tiles,
+input logic accumulating,
 input logic signed [63:0] rdataA, rdataB,
-input logic [13:0] addrAoffset,
+input logic signed [255:0] rdataC,
+input logic [13:0] addrAoffset, //need to adjust widths
+input logic [13:0] addrBoffset,
 input logic [13:0] addrCoffset,
 output logic [13:0] raddrA,
-output logic [10:0] raddrB,
+output logic [13:0] raddrB,
 output logic [13:0] waddrC,
+output logic [13:0] raddrC,
 output logic weC, done,
 output logic signed [255:0] wdataC
     );
@@ -40,6 +44,7 @@ output logic signed [255:0] wdataC
     logic signed [DATA_WIDTH-1 : 0] b_full [0:ARRAY_N-1][0:ARRAY_N-1];
     logic signed [DATA_WIDTH -1: 0] a_mat [0:ARRAY_N-1];
     logic signed [DATA_WIDTH -1: 0] b_mat [0:ARRAY_N-1];
+    logic signed [ACC_WIDTH - 1:0] cprev [0:ARRAY_N-1][0:ARRAY_N-1];
     logic signed [ACC_WIDTH -1: 0] results1 [0:ARRAY_N-1][0:ARRAY_N-1];
     logic signed [ACC_WIDTH -1: 0] results2 [0:ARRAY_N-1][0:ARRAY_N-1];
     logic [2*ARRAY_N-2:0] pingpongrst, pingpong, enable;
@@ -169,7 +174,8 @@ output logic signed [255:0] wdataC
         end 
     end
     assign raddrA = (start || rst)? addrAoffset: addrAoffset + i_next*tiles*8 + k_next*8 + stagger_next; 
-    assign raddrB = (start || rst)? 0: k_next*8 + j_next*8*tiles + stagger_next;
+    assign raddrB = (start || rst)? addrBoffset: addrBoffset + k_next*8 + j_next*8*tiles + stagger_next;
+    //assign raddrC = (start || rst)? addrCoffset: addrCoffset + (i*tiles + j)*ARRAY_N + newtilecycle; 
     assign load_complete = stagger==3'b111 && i==tiles-1 && j==tiles-1 && k==tiles-1;
     //assign pingpong[stagger] = (k%2)? 1:0 ;
     

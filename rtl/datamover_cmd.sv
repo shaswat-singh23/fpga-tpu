@@ -21,8 +21,8 @@
 
 
 // Drives one AXI DataMover command/status channel (MM2S or S2MM).
-// instruction_unit hands us: start, ddr_addr, length(tile count).
-// We: build the 72-bit command, send it, wait for the status word, raise done.
+// instruction_unit hands: start, ddr_addr, length(tile count).
+// build the 72-bit command, send it, wait for the status word, raise done.
 module datamover_cmd #(
     parameter BYTES_PER_TILECT_SQ = 64   // 64 for A/B (8-bit), 256 for C (32-bit)
 )(
@@ -76,28 +76,28 @@ module datamover_cmd #(
             state <= IDLE;
             cmd_tvalid <= 0; sts_tready <= 0; done <= 0; err <= 0;
         end else begin
-            done <= 0;
+            // REMOVED: done <= 0;    <-- was here, delete it
             case (state)
                 IDLE: begin
                     if (start) begin
-                        cmd_tdata  <= cmd_word;   // latch the command
+                        cmd_tdata  <= cmd_word;
                         cmd_tvalid <= 1;
+                        done       <= 0;      // <-- ADD: clear on new transfer
                         state      <= SEND;
                     end
                 end
                 SEND: begin
-                    // hold tvalid until DataMover takes the command
                     if (cmd_tvalid && cmd_tready) begin
                         cmd_tvalid <= 0;
-                        sts_tready <= 1;          // ready to accept status
+                        sts_tready <= 1;
                         state      <= WAITSTS;
                     end
                 end
                 WAITSTS: begin
                     if (sts_tvalid && sts_tready) begin
                         sts_tready <= 0;
-                        err   <= ~sts_tdata[7];   // bit 7 = OKAY
-                        done  <= 1;               // one-cycle done pulse
+                        err   <= ~sts_tdata[7];
+                        done  <= 1;           // now STAYS high until next start
                         state <= IDLE;
                     end
                 end
