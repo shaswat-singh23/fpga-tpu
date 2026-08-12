@@ -20,19 +20,23 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 
-module tile_bram #(parameter WIDTH = 64, DEPTH = 512)(
-input logic clk,
-input logic we,
-input logic [$clog2(DEPTH)-1:0] waddr,
-input logic [WIDTH-1:0] wdata,
-input logic [$clog2(DEPTH)-1:0] raddr,
-output logic [WIDTH-1:0] rdata
+module tile_bram #(
+    parameter WIDTH = 64,
+    parameter DEPTH = 512
+)(
+    input logic clk,
+    input logic we,
+    input logic [$clog2(DEPTH)-1:0] waddr,
+    input logic [WIDTH-1:0] wdata,
+    input logic [$clog2(DEPTH)-1:0] raddr,
+    output logic [WIDTH-1:0] rdata
 );
-logic [WIDTH-1:0] mem [0: DEPTH-1];
-always @(posedge clk) begin
-    if (we) begin
-        mem[waddr]<= wdata;
+    logic [WIDTH-1:0] mem [0:DEPTH-1];
+
+    always @(posedge clk) begin
+        if (we) begin
+            mem[waddr] <= wdata;
         end
-    rdata<= mem[raddr];
-end
+        rdata <= mem[raddr];
+    end
 endmodule
