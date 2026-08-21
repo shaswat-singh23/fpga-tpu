@@ -10,87 +10,93 @@ inference models in the TPU to reduce interactions with the host CPU."
 
 ## ISA Specification
 
-3-bit opcode, fixed-width 64-bit instruction word. Fields are NOT
+4-bit opcode, fixed-width 64-bit instruction word. Fields are NOT
 uniform across opcodes: LOAD/STORE and MATMUL/ACTIVATE/QUANTIZE use
 different bit layouts of the same 64-bit word. This is deliberate
 (CISC allows per-opcode reinterpretation) but means the layout must be
 read per-instruction-class, not assumed uniform. CISC execution model:
 instructions can occupy EXECUTE for thousands of cycles.
 
+Opcode widened from 3 to 4 bits (each opcode's own reserved/padding
+region absorbed the extra bit; no real operand field shrank). Done to
+leave real headroom for future instructions — e.g. an on-chip
+argmax/pick-highest op — rather than exhausting the last reserved
+3-bit code on LOAD_BIAS alone.
+
 ### Instructions
 
 | Opcode | Mnemonic   | Operands               | Description |
 |--------|------------|------------------------|-------------|
-| 000    | LOAD_A     | ddr_addr, bram_addr, length | PL pulls A from DDR into A_buf via DataMover, starting at bram_addr |
-| 001    | LOAD_B     | ddr_addr, bram_addr, length | PL pulls B from DDR into B_buf via DataMover, starting at bram_addr |
-| 010    | MATMUL     | a_addr, b_addr, c_addr, length, accumulate | Full i,j,k tile sweep with overlapped wavefronts; length = tiles-per-side (sets k-step count and pingpong toggle period); accumulate adds into existing C_buf contents instead of overwriting (supports user-managed contraction tiling for matrices wider than MAX_N) |
-| 011    | STORE_C    | ddr_addr, bram_addr, length | PL pushes C_buf (starting at bram_addr) to DDR via DataMover |
-| 100    | ACTIVATE   | c_addr, length, mode   | Element-wise nonlinear on C_buf in place; mode selects function (0=ReLU, 1=sigmoid) |
-| 101    | QUANTIZE   | c_addr (src), a_addr (dst), length | Scale/shift/clamp 32-bit C_buf values to 8-bit signed, write into A_buf |
-| 110    | HALT       | -                      | Stop execution, signal done to PS |
-| 111    | reserved   | -                      | - |
+| 0000   | LOAD_A     | ddr_addr, bram_addr, length | PL pulls A from DDR into A_buf via DataMover, starting at bram_addr |
+| 0001   | LOAD_B     | ddr_addr, bram_addr, length | PL pulls B from DDR into B_buf via DataMover, starting at bram_addr |
+| 0010   | MATMUL     | a_addr, b_addr, c_addr, length, accumulate | Full i,j,k tile sweep with overlapped wavefronts; length = tiles-per-side (sets k-step count and pingpong toggle period); accumulate adds into existing C_buf contents instead of overwriting (supports user-managed contraction tiling for matrices wider than MAX_N) |
+| 0011   | STORE_C    | ddr_addr, bram_addr, length | PL pushes C_buf (starting at bram_addr) to DDR via DataMover |
+| 0100   | ACTIVATE   | c_addr, length, mode   | Element-wise nonlinear on C_buf in place; mode selects function (0=ReLU, 1=sigmoid) |
+| 0101   | QUANTIZE   | c_addr (src), a_addr (dst), length | Scale/shift/clamp 32-bit C_buf values to 8-bit signed, write into A_buf |
+| 0110   | HALT       | -                      | Stop execution, signal done to PS |
+| 0111 - 1111 | reserved | -                | 9 opcodes free for future instructions (e.g. LOAD_BIAS, argmax) |
 
 ### Instruction Word Layout: LOAD_A / LOAD_B / STORE_C (64 bits)
 
 ```
-[63:61] opcode       3 bits
-[60:29] ddr_addr    32 bits  (DDR source for LOAD, DDR destination for STORE)
-[28:15] bram_addr   14 bits  (A_buf/B_buf destination for LOAD, C_buf source for STORE)
-[14:10] length       5 bits  (tile count per side)
-[9:0]   reserved    10 bits
+[63:60] opcode       4 bits
+[59:28] ddr_addr    32 bits  (DDR source for LOAD, DDR destination for STORE)
+[27:14] bram_addr   14 bits  (A_buf/B_buf destination for LOAD, C_buf source for STORE)
+[13:9]  length       5 bits  (tile count per side)
+[8:0]   reserved     9 bits
 ```
 
 Destination for LOAD_A vs LOAD_B is NOT a field — it's determined by
-opcode alone (000=A_buf, 001=B_buf), decoded into an internal l_dest
+opcode alone (0000=A_buf, 0001=B_buf), decoded into an internal l_dest
 select signal.
 
 ### Instruction Word Layout: MATMUL (64 bits)
 
 ```
-[63:61] opcode       3 bits
-[60:47] a_addr      14 bits
-[46:33] b_addr      14 bits
-[32:19] c_addr      14 bits
-[18:14] length       5 bits  (tiles-per-side)
-[13]    accumulate   1 bit   (1 = add into existing C_buf, 0 = overwrite)
-[12:0]  reserved    13 bits
+[63:60] opcode       4 bits
+[59:46] a_addr      14 bits
+[45:32] b_addr      14 bits
+[31:18] c_addr      14 bits
+[17:13] length       5 bits  (tiles-per-side)
+[12]    accumulate   1 bit   (1 = add into existing C_buf, 0 = overwrite)
+[11:0]  reserved    12 bits
 ```
 
 ### Instruction Word Layout: ACTIVATE (64 bits)
 
 ```
-[63:61] opcode       3 bits
-[60:47] c_addr      14 bits
-[46:19] reserved    28 bits
-[18:14] length       5 bits
-[13:11] mode         3 bits  (function select)
-[10:0]  reserved    11 bits
+[63:60] opcode       4 bits
+[59:46] c_addr      14 bits
+[45:18] reserved    28 bits
+[17:13] length       5 bits
+[12:10] mode         3 bits  (function select)
+[9:0]   reserved    10 bits
 ```
 
 ### Instruction Word Layout: QUANTIZE (64 bits)
 
 ```
-[63:61] opcode       3 bits
-[60:47] c_addr (src) 14 bits
-[46:33] a_addr (dst) 14 bits
-[32:19] reserved    14 bits
-[18:14] length       5 bits
-[13:0]  reserved    14 bits
+[63:60] opcode       4 bits
+[59:46] c_addr (src) 14 bits
+[45:32] a_addr (dst) 14 bits
+[31:18] reserved    14 bits
+[17:13] length       5 bits
+[12:0]  reserved    13 bits
 ```
 
 ### Instruction Word Layout: HALT (64 bits)
 
 ```
-[63:61] opcode       3 bits
-[60:0]  unused      61 bits
+[63:60] opcode       4 bits
+[59:0]  unused      60 bits
 ```
 
 ### Bit-position note
 
-Bit 13 is reinterpreted per opcode (MATMUL's accumulate flag vs
+Bit 12 is reinterpreted per opcode (MATMUL's accumulate flag vs
 ACTIVATE's top mode bit). This is safe since only one opcode's
 interpretation is ever active for a given instruction, but it means
-bit 13 has no single universal meaning across the ISA — always read
+bit 12 has no single universal meaning across the ISA — always read
 it in the context of the opcode's own layout table above, not as a
 fixed global field.
 

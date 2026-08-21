@@ -26,7 +26,7 @@ input logic [4:0] tiles,
 input logic accumulating,
 input logic signed [63:0] rdataA, rdataB,
 input logic signed [255:0] rdataC,
-input logic [13:0] addrAoffset, //need to adjust widths
+input logic [13:0] addrAoffset,
 input logic [13:0] addrBoffset,
 input logic [13:0] addrCoffset,
 output logic [13:0] raddrA,
@@ -53,17 +53,23 @@ output logic signed [255:0] wdataC
     logic [7:0] newtilecycle;
     logic [4:0] i, j, k, i_next, j_next, k_next, i_prev, j_prev;
     logic j_parity, j_parity_prev;
-    logic drain_active, drained_any, drain_consumed;
-    logic [2:0] drain_row; 
+    logic drain_active, drained_any, drain_consumed, read_active;
+    logic [2:0] drain_col;
+    logic [2:0] readfetch; 
     logic loaded_pulse;
     logic load_complete_d;
+    logic acclatch;
     always_ff @(posedge clk) begin
         if (rst || start) begin
             if (start) begin
                 running<=1;
                 stagger<=0;
+                acclatch <= accumulating;
+            end else begin
+            running<=0;
+            acclatch<=0;
             end
-            //cycle_count <= 0;
+            
             i<=0;
             j<=0;
             k<=0;
@@ -75,18 +81,21 @@ output logic signed [255:0] wdataC
             j_parity<=0;
             j_parity_prev<=0;
             drain_active<=0;
+            read_active <=0;
             drained_any<=0;
-            drain_row <=0;
+            drain_col <=0;
+            readfetch <= 0;
             load_complete_d<=0;
             drain_consumed <=0;
             drain_counter<=0;
+
             for (int row=0; row<ARRAY_N; row++) begin
                 for (int col=0; col<ARRAY_N; col++) begin
                     a_full [row][col]<=0;
                     b_full [row][col]<=0;
                 end
             end
-            //some a_full and b_full are zeroed out
+            
         end else if (running) begin
             if (!load_complete) begin
                 stagger<=stagger_next;
@@ -96,6 +105,7 @@ output logic signed [255:0] wdataC
             end else if (load_complete) begin
                 if (drain_counter==tiles*tiles)
                     done <=1;
+                    
                 if (end_count!=4'hF) begin
                     end_count <= end_count+1;
                 end
@@ -118,15 +128,26 @@ output logic signed [255:0] wdataC
                 drain_consumed<=0;
                 drain_counter<=drain_counter+1;
             end
+            
+            if (newtilecycle == ARRAY_N-2 && drained_any) begin
+                readfetch <= 0;
+                read_active <= 1;
+            end else if (read_active) begin
+                if (readfetch == ARRAY_N -1) begin
+                    read_active <=0;
+                end else
+                    readfetch <= readfetch+1;
+            end
+            
             if (newtilecycle == ARRAY_N-1 && drained_any) begin
                 drain_active<=1;
-                drain_row<=0;
+                drain_col<=0;
             end else if (drain_active) begin
-                if (drain_row == ARRAY_N -1)begin
+                if (drain_col == ARRAY_N -1)begin
                     drain_active<=0;
                     drain_consumed<=1;
                 end else 
-                    drain_row<=drain_row+1;
+                    drain_col<=drain_col+1;
             end                
                 
             a_full[stagger][7] <= rdataA[63:56];
@@ -147,10 +168,13 @@ output logic signed [255:0] wdataC
             b_full[0][stagger] <= rdataB[ 7: 0];
             
         end
-        if (done)
+        if (done && !(start||rst)) begin
             running<=0;
+            acclatch<=0;
+        end
+
     end 
-    
+
     always_comb begin
         for (int ia=0; ia<ARRAY_N; ia++) begin
             if (load_complete_d) a_mat[ia] = /*(!newtilecycle && ia==ARRAY_N-1)? rdataA[7:0] :*/ (8+newtilecycle<=7+ia)? a_full[ia][ 8+newtilecycle-ia ]:0;
@@ -175,30 +199,32 @@ output logic signed [255:0] wdataC
     end
     assign raddrA = (start || rst)? addrAoffset: addrAoffset + i_next*tiles*8 + k_next*8 + stagger_next; 
     assign raddrB = (start || rst)? addrBoffset: addrBoffset + k_next*8 + j_next*8*tiles + stagger_next;
-    //assign raddrC = (start || rst)? addrCoffset: addrCoffset + (i*tiles + j)*ARRAY_N + newtilecycle; 
     assign load_complete = stagger==3'b111 && i==tiles-1 && j==tiles-1 && k==tiles-1;
-    //assign pingpong[stagger] = (k%2)? 1:0 ;
     
     genvar d;
     generate 
         for (d=0; d<2*ARRAY_N-1; d++) begin: enable_gen
             assign enable[d] = (running) && (end_count<=d+1);
             assign pingpong[d] = (newtilecycle>=d)? j_parity:j_parity_prev;
-            assign pingpongrst[d] = drain_active && (d==(drain_row)) || (!drain_active && drain_row==ARRAY_N-1 && d>=ARRAY_N-1 && drain_consumed);
-            // && (d<=(drain_row-1)+ARRAY_N-1)
+            assign pingpongrst[d] = drain_active && (d==(drain_col)) || (!drain_active && drain_col==ARRAY_N-1 && d>=ARRAY_N-1 && drain_consumed);
         end
     endgenerate
     
     always_comb begin
         wdataC = 0;
         for (int c=0; c<ARRAY_N; c++) begin
+            if (acclatch) begin
+            wdataC[c*ACC_WIDTH +: ACC_WIDTH] =
+                pingpong[drain_col]? (results1[c][drain_col] + (rdataC[c*ACC_WIDTH +: ACC_WIDTH])) : (results2[c][drain_col] + (rdataC[c*ACC_WIDTH +: ACC_WIDTH]));
+            end else
             wdataC[c*ACC_WIDTH +: ACC_WIDTH] = 
-                pingpong[drain_row]? results1[drain_row][c] : results2[drain_row][c];
+                pingpong[drain_col]? results1[c][drain_col] : results2[c][drain_col];
         end
     end
     
     assign weC = drain_active;
-    assign waddrC = addrCoffset + (i_prev*tiles + j_prev)*ARRAY_N + drain_row;
+    assign raddrC = (addrCoffset + (j_prev*tiles + i_prev)*ARRAY_N + readfetch);
+    assign waddrC = addrCoffset + (j_prev*tiles + i_prev)*ARRAY_N + drain_col;
     assign loaded_pulse = load_complete && !load_complete_d;
     assign arrayrst = rst || start;
     systolic_array #(.N(ARRAY_N), .DATA_WIDTH(DATA_WIDTH), .ACC_WIDTH(ACC_WIDTH)) array(

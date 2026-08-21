@@ -31,12 +31,13 @@ module tile_bram #(
     input logic [$clog2(DEPTH)-1:0] raddr,
     output logic [WIDTH-1:0] rdata
 );
-    logic [WIDTH-1:0] mem [0:DEPTH-1];
+    (* ram_style = "block" *) logic [WIDTH-1:0] mem [0:DEPTH-1];
 
     always @(posedge clk) begin
-        if (we) begin
-            mem[waddr] <= wdata;
-        end
+        if (we) mem[waddr] <= wdata;
+    end
+    
+    always @(posedge clk) begin
         rdata <= mem[raddr];
     end
 endmodule
