@@ -39,6 +39,8 @@ known issue and workaround around C_buf addressing (see below).
 ![accelerator_top data flow](images/accelerator_dataflow.svg)
 ![vivado block design](images/vivado_block_design.png)
 Full block diagram of PS and PL; accelerator_top encapsulates PL
+![Resource utilization](images/resource_util_simple.png)
+Resource utilization for full hardware design running inference
 
 - ISA: 9-instruction CISC set (LOAD_A, LOAD_B, LOAD_BIAS, LOAD_SCALE,
   MATMUL, STORE_C, ACTIVATE, QUANTIZE, HALT), 64-bit fixed-width
@@ -144,5 +146,5 @@ bit-exact on hardware, with a software tiling driver reaching about
 
 Requires Vivado 2024.2+ and Vitis Unified IDE. The current design on
 `main` is fully hardware-validated (first hardware-verified milestone
-tagged `v2.0-option-c-hardware-working`). Formal build documentation
+tagged `v2.0-axilite-hardware-working`). Formal build documentation
 is still pending.
