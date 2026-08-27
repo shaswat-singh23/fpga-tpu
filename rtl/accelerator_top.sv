@@ -27,7 +27,7 @@ module accelerator_top #(
     // batch=64. Layer 1 (784->64, K-tiled at tiles=8/64-cube, 13
     // K-chunks of 64x64, padded contraction 832) + Layer 2 (64->16,
     // single 64-cube call, no K-tiling needed since K=64 fits exactly).
-    parameter A_BUF_DEPTH = 7168,   // 64-bit words: (13*64*64 + 1*64*64) / 8
+    parameter A_BUF_DEPTH = 7680,   // 64-bit words: (13*64*64 + 1*64*64) / 8
     parameter B_BUF_DEPTH = 6656,   // same shape as A_buf
     parameter C_BUF_DEPTH = 512     // 256-bit words: max(64*64,64*64)/8 -- transient, reused per layer
 )(
