@@ -1,0 +1,68 @@
+<svg width="680" height="600" viewBox="0 0 680 600" xmlns="http://www.w3.org/2000/svg" font-family="Helvetica, Arial, sans-serif">
+<title>accelerator_top data flow diagram</title>
+<desc>Data flow between accelerator_top's modules: instruction unit dispatches to on-chip buffers and compute units; A_buf and B_buf feed gemm_sequencer; gemm_sequencer writes C_buf; activate_unit reads/writes C_buf in place; quantize_unit reads C_buf and writes back into B_buf as the next layer's input; store_adapter reads C_buf out to DDR.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#1a1a1a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+
+<rect x="0" y="0" width="680" height="600" fill="#ffffff"/>
+
+<g stroke="#1a1a1a" fill="#f7f7f7">
+<rect x="250" y="20" width="180" height="40" rx="3" stroke-width="1"/>
+</g>
+<text x="340" y="44" text-anchor="middle" font-size="15" font-weight="600" fill="#1a1a1a">PS</text>
+
+<line x1="340" y1="60" x2="340" y2="88" stroke="#1a1a1a" stroke-width="1.3" marker-end="url(#arrow)"/>
+
+<rect x="250" y="88" width="180" height="40" rx="3" stroke="#1a1a1a" stroke-width="1" fill="#f7f7f7"/>
+<text x="340" y="106" text-anchor="middle" font-size="15" font-weight="600" fill="#1a1a1a">instruction_unit</text>
+<text x="340" y="122" text-anchor="middle" font-size="11" fill="#1a1a1a">dispatch to units below</text>
+
+<rect x="70" y="150" width="140" height="40" rx="3" stroke="#1a1a1a" stroke-width="1" fill="#f7f7f7"/>
+<text x="140" y="174" text-anchor="middle" font-size="15" font-weight="600" fill="#1a1a1a">A_buf</text>
+
+<rect x="270" y="150" width="140" height="40" rx="3" stroke="#1a1a1a" stroke-width="1" fill="#f7f7f7"/>
+<text x="340" y="174" text-anchor="middle" font-size="15" font-weight="600" fill="#1a1a1a">B_buf</text>
+
+<rect x="470" y="150" width="140" height="40" rx="3" stroke="#1a1a1a" stroke-width="1" fill="#f7f7f7"/>
+<text x="540" y="168" text-anchor="middle" font-size="15" font-weight="600" fill="#1a1a1a">bias_buf</text>
+<text x="540" y="184" text-anchor="middle" font-size="11" fill="#1a1a1a">scale_buf</text>
+
+<path d="M140 190V210H220V226" fill="none" stroke="#1a1a1a" stroke-width="1.3" marker-end="url(#arrow)"/>
+<text x="150" y="206" font-size="11" fill="#1a1a1a">rdataA</text>
+<line x1="340" y1="190" x2="340" y2="226" stroke="#1a1a1a" stroke-width="1.3" marker-end="url(#arrow)"/>
+<text x="352" y="212" font-size="11" fill="#1a1a1a">rdataB</text>
+
+<rect x="200" y="226" width="280" height="56" rx="3" stroke="#1a1a1a" stroke-width="1" fill="#f0f0f0"/>
+<text x="340" y="250" text-anchor="middle" font-size="16" font-weight="700" fill="#1a1a1a">gemm_sequencer</text>
+<text x="340" y="268" text-anchor="middle" font-size="11" fill="#1a1a1a">systolic array</text>
+
+<line x1="340" y1="282" x2="340" y2="320" stroke="#1a1a1a" stroke-width="1.3" marker-end="url(#arrow)"/>
+<text x="352" y="304" font-size="11" fill="#1a1a1a">weC / wdataC</text>
+
+<rect x="250" y="320" width="180" height="44" rx="3" stroke="#1a1a1a" stroke-width="1" fill="#f7f7f7"/>
+<text x="340" y="348" text-anchor="middle" font-size="15" font-weight="600" fill="#1a1a1a">C_buf</text>
+
+<path d="M290 364V390H150V410" fill="none" stroke="#1a1a1a" stroke-width="1.3" marker-end="url(#arrow)"/>
+<line x1="340" y1="364" x2="340" y2="410" stroke="#1a1a1a" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M390 364V390H530V410" fill="none" stroke="#1a1a1a" stroke-width="1.3" marker-end="url(#arrow)"/>
+
+<rect x="70" y="410" width="160" height="50" rx="3" stroke="#1a1a1a" stroke-width="1" fill="#f7f7f7"/>
+<text x="150" y="432" text-anchor="middle" font-size="15" font-weight="600" fill="#1a1a1a">activate_unit</text>
+<text x="150" y="448" text-anchor="middle" font-size="11" fill="#1a1a1a">bias, ReLU</text>
+
+<rect x="260" y="410" width="160" height="50" rx="3" stroke="#1a1a1a" stroke-width="1" fill="#f7f7f7"/>
+<text x="340" y="432" text-anchor="middle" font-size="15" font-weight="600" fill="#1a1a1a">quantize_unit</text>
+<text x="340" y="448" text-anchor="middle" font-size="11" fill="#1a1a1a">requantize</text>
+
+<rect x="450" y="410" width="160" height="50" rx="3" stroke="#1a1a1a" stroke-width="1" fill="#f7f7f7"/>
+<text x="530" y="440" text-anchor="middle" font-size="15" font-weight="600" fill="#1a1a1a">store_adapter</text>
+
+<path d="M340 460V475H28V136H340V150" fill="none" stroke="#1a1a1a" stroke-width="1.3" marker-end="url(#arrow)"/>
+<text x="34" y="300" font-size="11" fill="#1a1a1a">weB / wdataB</text>
+<text x="34" y="314" font-size="11" fill="#1a1a1a">(next layer input)</text>
+
+<line x1="530" y1="460" x2="530" y2="494" stroke="#1a1a1a" stroke-width="1.3" marker-end="url(#arrow)"/>
+<text x="542" y="480" font-size="11" fill="#1a1a1a">DataMover</text>
+
+<rect x="450" y="494" width="160" height="40" rx="3" stroke="#1a1a1a" stroke-width="1" fill="#f7f7f7"/>
+<text x="530" y="518" text-anchor="middle" font-size="15" font-weight="600" fill="#1a1a1a">DDR</text>
+</svg>
