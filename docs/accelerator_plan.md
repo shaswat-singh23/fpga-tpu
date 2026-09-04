@@ -224,7 +224,7 @@ justified on its own rather than derived from one shared size.
 | scale_buf  | 64b   | 128   | Per-neuron uint8 QUANTIZE scale values (real need is 8 tile-rows) |
 | Instr      | 64b   | 512   | Instruction program |
 
-Clock: 50 MHz. Dropped from an earlier 62.5 MHz after this BRAM
+Clock: 52.6 MHz. Dropped from an earlier 62.5 MHz after this BRAM
 resize violated WNS at 62.5 MHz. The bottleneck both times was BRAM
 address-bus net delay, not logic depth.
 

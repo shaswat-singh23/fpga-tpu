@@ -25,7 +25,7 @@ Result: on a 64-image test batch, the accelerator's output matches a
 Python golden model bit-for-bit, in 1,646 &micro;s versus 296,187
 &micro;s for an equivalent software loop on the same ARM core. Same
 weights, same batch, same quantized arithmetic, only the
-accelerator-vs-not variable changes. About 180x speedup. Model
+accelerator-vs-not variable changes. About 190x speedup. Model
 accuracy on held-out data is around 91 percent, this particular batch
 draw happened to land lower, but the result being demonstrated here
 is that hardware and software agree exactly.
@@ -95,7 +95,7 @@ Hardware (PYNQ-Z2):
 - Full three-layer MNIST inference pipeline: matches the Python
   golden model bit-for-bit on the demo batch (see Status above for
   accuracy context).
-- About 180x speedup over an equivalent plain-C software loop on the
+- About 190x speedup over an equivalent plain-C software loop on the
   same ARM core, same quantized int8 arithmetic, same input batch.
 - Accumulate/K-tiling, including the full accumulate to ACTIVATE to
   QUANTIZE handoff: 0 mismatches.
