@@ -14,8 +14,8 @@ batch=64, on PYNQ-Z2.
 
 | | Accelerator | Software (same ARM core) |
 |---|---|---|
-| Total runtime | 1,646 us | 296,187 us |
-| Speedup | about 180x | baseline |
+| Total runtime | 1,567 us | 296,187 us |
+| Speedup | about 190x | baseline |
 
 Both sides ran the identical quantized int8 arithmetic, same trained
 weights, same input batch. The only variable that changes is whether
@@ -27,10 +27,10 @@ for how the model gets to int8 in the first place.
 
 ## Not yet profiled
 
-The 1,646 us total hasn't been broken down into per-instruction or
+The 1,567 us total hasn't been broken down into per-instruction or
 per-stage timing (how much is LOAD, how much is the 13-chunk K-tile
 accumulate chain, how much is ACTIVATE/QUANTIZE, how much is STORE_C)
-for this specific 3-layer, 50 MHz build. Earlier per-instruction
+for this specific 3-layer, 52.6 MHz build. Earlier per-instruction
 numbers exist from a two-layer build at 62.5 MHz (before the batch=64
 BRAM resize dropped the clock), but the clock and instruction count
 have both changed since, so those aren't presented here as current.
