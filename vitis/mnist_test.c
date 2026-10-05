@@ -5,7 +5,7 @@
 #include "xparameters_ps.h"
 #include <stdlib.h>
 #include "weights_data.h"
-#include "testdata.h"
+#include "test_data.h"
 
 // ---- Global Timer ----
 #define GLOBAL_TMR_BASE   0xF8F00200
@@ -316,20 +316,20 @@ int main() {
     encode_load(0x8, ADDR_M2, 8, 1, &lo, &hi); prog_emit(lo, hi);
 
     for (int k = 0; k < K1_CHUNKS; k++) {
-        encode_matmul(k*CHUNK_W, k*CHUNK_W, 63, TILES, (k==0)?0:1, &lo, &hi);
+        encode_matmul(k*CHUNK_W, k*CHUNK_W, 0, TILES, (k==0)?0:1, &lo, &hi);
         prog_emit(lo, hi);
     }
-    encode_activate(63, 0, 1, TILES, 0, &lo, &hi); prog_emit(lo, hi);
-    encode_quantize(63, 0, 0, TILES, L1_SHIFT, &lo, &hi); prog_emit(lo, hi);
+    encode_activate(0, 0, 1, TILES, 0, &lo, &hi); prog_emit(lo, hi);
+    encode_quantize(0, 0, 0, TILES, L1_SHIFT, &lo, &hi); prog_emit(lo, hi);
 
-    encode_matmul(13*CHUNK_W, 0, 63, TILES, 0, &lo, &hi); prog_emit(lo, hi);
-    encode_activate(63, 8, 1, TILES, 0, &lo, &hi); prog_emit(lo, hi);
-    encode_quantize(63, 0, 8, TILES, L2_SHIFT, &lo, &hi); prog_emit(lo, hi);
+    encode_matmul(13*CHUNK_W, 0, 0, TILES, 0, &lo, &hi); prog_emit(lo, hi);
+    encode_activate(0, 8, 1, TILES, 0, &lo, &hi); prog_emit(lo, hi);
+    encode_quantize(0, 0, 8, TILES, L2_SHIFT, &lo, &hi); prog_emit(lo, hi);
 
-    encode_matmul(14*CHUNK_W, 0, 63, TILES, 0, &lo, &hi); prog_emit(lo, hi);
-    encode_activate(63, 16, 1, TILES, 1, &lo, &hi); prog_emit(lo, hi);   // mode=1, no ReLU
+    encode_matmul(14*CHUNK_W, 0, 0, TILES, 0, &lo, &hi); prog_emit(lo, hi);
+    encode_activate(0, 16, 1, TILES, 1, &lo, &hi); prog_emit(lo, hi);   // mode=1, no ReLU
 
-    encode_store(ADDR_OUT, 63, TILES, &lo, &hi); prog_emit(lo, hi);
+    encode_store(ADDR_OUT, 0, TILES, &lo, &hi); prog_emit(lo, hi);
 
     if (!prog_run("mnist_inference", &hw_us)) return 1;
 
