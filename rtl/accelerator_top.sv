@@ -287,9 +287,9 @@ module accelerator_top #(
     // truly overlap.
     logic [13:0]  c_raddr_mux;
     logic [255:0] c_rdata_raw;
-    assign c_raddr_mux = quantizing ? qz_raddrC :
-                         activating ? act_raddrC :
-                         storing    ? store_raddr :
+    assign c_raddr_mux = (quantizing || qz_start) ? qz_raddrC :
+                         (activating || act_start) ? act_raddrC :
+                         (storing || s_start)   ? store_raddr :
                                       gs_raddrC;
     assign c_rdata_store = c_rdata_raw;
     assign gs_rdataC     = c_rdata_raw;
