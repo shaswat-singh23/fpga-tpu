@@ -10,7 +10,7 @@ X_full = X.T
 m = X_full.shape[1]
 n= X_full.shape[0]
 
-np.random.seed(67)   # reproducible shuffle
+np.random.seed(100)   # reproducible shuffle
 perm = np.random.permutation(m)
 X_full = X_full[:, perm]
 y_full = y[perm]

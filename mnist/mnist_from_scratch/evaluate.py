@@ -8,7 +8,7 @@ X_full = X.T
 
 m = X_full.shape[1]
 
-np.random.seed(67)   # MUST match train.py exactly, or dev set won't be the same held-out examples
+np.random.seed(100)   # MUST match train.py exactly, or dev set won't be the same held-out examples
 perm = np.random.permutation(m)
 X_full = X_full[:, perm]
 y_full = y[perm]

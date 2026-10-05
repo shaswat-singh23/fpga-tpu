@@ -51,7 +51,7 @@ if __name__ == '__main__':
     mnist = fetch_openml('mnist_784', version=1, as_frame=False, parser='liac-arff')
     X, y = mnist.data, mnist.target.astype(int)
 
-    np.random.seed(67)
+    np.random.seed(100)
     perm = np.random.permutation(X.shape[0])
     X_shuf, y_shuf = X[perm], y[perm]
 
