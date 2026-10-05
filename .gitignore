@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+ip/
+rtl/component.xml
+rtl/xgui/
