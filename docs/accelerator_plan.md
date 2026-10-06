@@ -149,13 +149,13 @@ LOAD_A    layer1_weights_ddr, 0,  8      ; layer 1 weight tile into A_buf
 LOAD_B    input_ddr,          0,  8      ; input vector(s) into B_buf
 LOAD_BIAS layer1_bias_ddr,    0,  1
 LOAD_SCALE layer1_scale_ddr,  0,  1
-MATMUL    0, 0, C_ADDR, 8, 0             ; C_ADDR: see Known Issue below
-ACTIVATE  C_ADDR, 0, 1, 8, 0             ; ReLU plus bias
+MATMUL    0, 0, 0, 8, 0                  ; C_buf base 0, any base works
+ACTIVATE  0, 0, 1, 8, 0                  ; ReLU plus bias
 STORE_C   layer1_out_ddr, 0, 8           ; optional, for debugging
-QUANTIZE  C_ADDR, 0, 0, 8, SHIFT_VAL     ; C_buf to B_buf, becomes layer 2's input
+QUANTIZE  0, 0, 0, 8, SHIFT_VAL          ; C_buf to B_buf, becomes layer 2's input
 LOAD_A    layer2_weights_ddr, 0, 8       ; layer 2 weights, different from layer 1's
-MATMUL    0, 0, C_ADDR, 8, 0
-ACTIVATE  C_ADDR, 0, 1, 8, 0
+MATMUL    0, 0, 0, 8, 0
+ACTIVATE  0, 0, 1, 8, 0
 STORE_C   layer2_out_ddr, 0, 8
 HALT
 ```
@@ -168,28 +168,65 @@ and 1 on the rest.
 
 ---
 
-## Known Issue: accumulate and C_buf addressing workaround
+## Resolved: C_buf first-read address bug
 
-There's an unresolved hardware bug where certain C_buf accesses at
-address 0 corrupt the first drain word, most likely a same-address
-dual-port BRAM collision inside `tile_bram.sv`. Not root-caused. Two
-fix attempts in that file didn't resolve it, see project notes if
-revisiting this.
+Symptom, first seen in August: the first C_buf word of an operation
+(the first drain word of tile[0][0]) came back wrong unless the C_buf
+base address was the one value that happened to work. It was
+originally blamed on a same-address dual-port BRAM collision inside
+`tile_bram.sv`. That diagnosis was wrong. `tile_bram` was never the
+problem, and neither was the result `gemm_sequencer` computed.
 
-Current workaround, required in every instruction stream: for any
-tiles=N (N*8-wide) operation, every c_addr-family operand that touches
-C_buf, meaning MATMUL's c_addr, ACTIVATE's c_addr, QUANTIZE's c_addr,
-and STORE_C's bram_addr when reading C_buf, must use c_addr=N*8-1, not 0.
-This is safe because C_buf's physical address port is narrower than
-the address signals feeding it, so any offset wraps modulo C_buf's
-depth the same way for every consumer, as long as every step in a
-chain uses the same base. Verified end to end (13-call accumulate
-chain, then ACTIVATE, then QUANTIZE, then layer 2 MATMUL) with zero
-mismatches using this rule.
+Root cause, in `accelerator_top`: STORE_C, ACTIVATE, and QUANTIZE each
+present their first C_buf read address in their start cycle. The
+`storing`/`activating`/`quantizing` latches that steer `c_raddr_mux`
+are registered off the start pulse, so they go high one cycle later.
+In that first cycle the mux still selected `gs_raddrC`, whatever
+address the idle sequencer was parked on, so each unit read its word
+0 from the wrong place. For STORE_C only the copy sent to DDR was
+wrong. ACTIVATE and QUANTIZE wrote the bad word back (into C_buf and
+B_buf), and from B_buf it spread to one full output column of the
+next MATMUL.
 
-This is a workaround, not a fix. Revisit `tile_bram.sv`'s collision
-handling and `processing_element.sv` (never reviewed during the
-original investigation) after higher-priority work is done.
+Why the old workaround worked: the pre-pipelining sequencer computed
+`raddrC` from its live `addrCoffset` and `tiles` inputs. During any
+non-MATMUL instruction those decode to 0, which left the parked
+address at `i_prev*8 + readfetch`, 63 after a tiles=8 MATMUL. Setting
+every c_addr to N*8-1 = 63 made the requested address equal the
+parked one. A coincidence, not a property of the BRAM.
+
+Why it resurfaced: the pipelined sequencer latches its offsets and
+parks at `cbase + readfetch`, the last word of the result. That never
+equals the base, so no c_addr value hides the bug, and the workaround
+stopped working on the 83.3 MHz build. It went unnoticed there at
+first because the MNIST demo only compares accuracy counts and the
+corruption is confined to one image.
+
+Fix: the mux also selects each unit during its start cycle.
+
+```systemverilog
+assign c_raddr_mux = (quantizing || qz_start)  ? qz_raddrC :
+                     (activating || act_start) ? act_raddrC :
+                     (storing    || s_start)   ? store_raddr :
+                                                 gs_raddrC;
+```
+
+The c_addr = N*8-1 rule is no longer required. Any C_buf base works,
+including 0.
+
+Validation: reproduced and fixed in a top-level simulation that runs
+the MNIST instruction stream stage by stage against the C software
+baseline (0 / 4096 mismatches at every stage, C_buf bases 0, 63, 200,
+and 317, with and without stream backpressure), plus 180 random
+back-to-back programs (tiles 1, 2, 4, 8, random A/B/C offsets,
+accumulate chains of 1 to 3, no reset in between). On hardware, the
+bitstream checker's five tests all pass at 0 / 4096 mismatches on the
+fixed 83.3 MHz build, and the MNIST demo passes with every C_buf base
+set to 0.
+
+Lesson: every unit TB passed while this bug was live, because the bug
+is in the wiring between units, not inside any one of them. It took a
+top-level simulation to see it.
 
 ---
 
@@ -201,7 +238,7 @@ original investigation) after higher-priority work is done.
 |---------------------|------------|------|
 | processing_element  | verified on hardware | Dual-bank accumulator PE, signed arithmetic, per-diagonal pingpong/pingpongrst |
 | systolic_array       | verified on hardware | 8x8 PE mesh, enable/pingpong/pingpongrst all [2N-2:0] wide, [i+j] addressed |
-| tile_bram           | verified, known issue | Parameterized dual-port BRAM. See Known Issue above |
+| tile_bram           | verified on hardware | Parameterized dual-port BRAM, registered read |
 | gemm_sequencer      | verified on hardware | Core compute engine: overlapped wavefronts, progressive tile loading, C_buf flush, accumulate/K-tiling |
 | activate_unit       | verified on hardware | Element-wise ReLU plus optional per-neuron bias, in place on C_buf |
 | quantize_unit       | verified on hardware | Per-neuron scale/shift/clamp, C_buf to B_buf, pipelined for timing closure |
@@ -224,9 +261,12 @@ justified on its own rather than derived from one shared size.
 | scale_buf  | 64b   | 128   | Per-neuron uint8 QUANTIZE scale values (real need is 8 tile-rows) |
 | Instr      | 64b   | 512   | Instruction program |
 
-Clock: 52.6 MHz. Dropped from an earlier 62.5 MHz after this BRAM
-resize violated WNS at 62.5 MHz. The bottleneck both times was BRAM
-address-bus net delay, not logic depth.
+Clock: 83.3 MHz (12 ns). History: 62.5 MHz on the two-layer build,
+dropped to 52.6 MHz after this BRAM resize, where the limit turned
+out to be `gemm_sequencer`'s read-address generation (multiplies and
+a carry chain feeding the BRAM address buses). Replacing that with
+registered address counters brought it to 83.3 MHz. See
+`docs/gemm_sequencer_design.md` and `docs/performance_analysis.md`.
 
 ### PS-PL Interface
 
@@ -285,8 +325,12 @@ Hardware (PYNQ-Z2, real silicon):
   on held-out data is around 91 percent, see `mnist/` for training
   and evaluation details.
 - Accumulate/K-tiling, including the full accumulate to ACTIVATE to
-  QUANTIZE handoff: 0 mismatches, using the addressing workaround
-  documented above.
+  QUANTIZE handoff: 0 mismatches. First validated with the c_addr
+  workaround, which the `c_raddr_mux` fix has since made unnecessary
+  (see Resolved above).
+- Bitstream checker on the fixed 83.3 MHz build: two-layer
+  regression, accumulate, 3-chunk K-tile chain, high BRAM addresses,
+  and instruction slots above 128 all pass at 0 / 4096 mismatches.
 - Instruction memory addressing beyond the original 128-slot range,
   high-address BRAM access: both verified.
 
@@ -296,16 +340,16 @@ Simulation:
   with different operands per call and a multi-tile trial. All cases
   pass. `sim/gemm_sequencer_tb.sv`.
 - `tile_bram`: isolated TB, write/read correctness, registered read
-  latency, independent-port behavior. Does not currently catch the
-  hardware collision issue noted above. Sim's behavioral RAM model
-  doesn't reproduce the real primitive's collision semantics.
+  latency, independent-port behavior. The C_buf bug once attributed
+  to this module was a top-level mux timing bug, see Resolved above.
 - `quantize_unit`: 5-trial back-to-back TB, varying length/shift/
   offsets, no reset between runs, including length=1 and scale=0
   edge cases.
 
-Not yet built: randomized backpressure testing on the DataMover
-interface, a simulation model that reproduces the C_buf collision
-issue.
+Not yet built: an `accelerator_top` testbench in `sim/` (the
+top-level simulation that found the C_buf bug is not in the repo's
+sim set), randomized backpressure testing on the DataMover
+interface.
 
 ---
 

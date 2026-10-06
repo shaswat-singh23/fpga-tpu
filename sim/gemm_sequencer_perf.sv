@@ -35,7 +35,7 @@ module gemm_sequencer_perf_tb();
   parameter DATA_WIDTH = 8;
   parameter ACC_WIDTH  = 32;
   parameter ARRAY_N    = 8;
-  parameter real F_MHZ = 52.6;      // <-- achieved post-implementation clock (WNS >= 0)
+  parameter real F_MHZ = 83.3;      // <-- achieved post-implementation clock (WNS >= 0)
   parameter N_MIN = 16, N_MAX = 128, N_STEP = 16;
 
   logic clk = 0, rst, start;

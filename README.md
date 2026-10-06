@@ -21,18 +21,24 @@ for contraction dimensions wider than one MATMUL call covers),
 running a real 3-layer MLP trained from scratch, quantized to int8,
 and deployed entirely on-chip.
 
-Result: on a 64-image test batch, the accelerator's output matches a
-Python golden model bit-for-bit, in 1,646 &micro;s versus 296,187
-&micro;s for an equivalent software loop on the same ARM core. Same
-weights, same batch, same quantized arithmetic, only the
-accelerator-vs-not variable changes. About 190x speedup. Model
-accuracy on held-out data is around 91 percent, this particular batch
-draw happened to land lower, but the result being demonstrated here
-is that hardware and software agree exactly.
+Result: on a 64-image test batch at 83.3 MHz, the accelerator runs
+the full three-layer inference in 1,013 &micro;s versus 94,742
+&micro;s for the same arithmetic as -O3 NEON-vectorized C on the same
+ARM core. Same weights, same batch, same quantized arithmetic, only
+the accelerator-vs-not variable changes. About 93x speedup. Both
+sides classify 58 of the 64 images correctly, in line with the
+model's roughly 91 percent accuracy on held-out data.
+
+Correctness on the current build: the hardware regression checker is
+bit-exact (0 / 4096 mismatches on all five tests). The three-layer
+MNIST pipeline was checked bit-for-bit against a Python golden model
+on the earlier pre-pipelining build. On the current build the demo
+compares classification results against the C baseline, and they
+agree.
 
 See `docs/accelerator_plan.md` for the full ISA spec, instruction
-encoding, memory map, and design rationale, including a documented
-known issue and workaround around C_buf addressing (see below).
+encoding, memory map, and design rationale, including the root cause
+and fix for an earlier C_buf addressing bug (see below).
 
 ## Architecture
 
@@ -68,14 +74,16 @@ Resource utilization for full hardware design running inference
 See `docs/accelerator_plan.md` for the full ISA spec, instruction
 encoding, memory map, and design rationale.
 
-## Known Issue
+## Resolved Issue: C_buf first-read address
 
-There is an unresolved hardware bug in C_buf addressing, most likely
-a same-address dual-port BRAM collision inside `tile_bram.sv`. It has
-a verified, documented workaround (a fixed C_buf base address instead
-of 0) rather than a root-cause fix. See "Known Issue" in
-`docs/accelerator_plan.md` for the exact rule and what's already been
-ruled out. Root cause is deferred, not abandoned.
+Earlier versions documented an unresolved C_buf bug, attributed to a
+BRAM collision inside `tile_bram.sv`, with a fixed-base-address
+workaround. The real cause was in `accelerator_top`: the C_buf read
+mux switched over to STORE_C, ACTIVATE, or QUANTIZE one cycle after
+that unit issued its first read, so word 0 came from the wrong
+address. Fixed with a one-statement change to the mux, and the
+workaround is no longer needed. See "Resolved: C_buf first-read
+address bug" in `docs/accelerator_plan.md` for the full write-up.
 
 ## Repository Layout
 
@@ -92,11 +100,15 @@ vitis/      Bare-metal ARM application (accelerator driver + software baseline)
 ## Verification
 
 Hardware (PYNQ-Z2):
-- Full three-layer MNIST inference pipeline: matches the Python
-  golden model bit-for-bit on the demo batch (see Status above for
-  accuracy context).
-- About 190x speedup over an equivalent plain-C software loop on the
-  same ARM core, same quantized int8 arithmetic, same input batch.
+- Full three-layer MNIST inference pipeline: hardware and the C
+  software baseline classify the demo batch identically (58 of 64).
+  Matched the Python golden model bit-for-bit on the earlier
+  pre-pipelining build (see Status above).
+- About 93x speedup over -O3 NEON-vectorized C on the same ARM core,
+  same quantized int8 arithmetic, same input batch, at 83.3 MHz.
+- Regression checker (two-layer pipeline, accumulate, K-tile chain,
+  high BRAM addresses, instruction slots above 128): 0 / 4096
+  mismatches on every test.
 - Accumulate/K-tiling, including the full accumulate to ACTIVATE to
   QUANTIZE handoff: 0 mismatches.
 - Instruction memory addressing beyond the original slot count, high
@@ -118,15 +130,13 @@ Simulation:
   (16-128, step 8) pre-accumulate, plus a dedicated accumulate TB.
   All cases pass. `sim/gemm_sequencer_tb.sv`.
 - `tile_bram`: isolated TB, write/read correctness, registered read
-  latency, independent-port behavior. Does not currently reproduce
-  the hardware collision issue noted above (idealized behavioral RAM
-  model vs. the real synthesized primitive).
+  latency, independent-port behavior.
 - `quantize_unit`: 5-trial back-to-back TB, no reset between runs,
   including length=1 and scale=0 edge cases.
 
-Not yet built: randomized backpressure testing on the DataMover
-interface, a simulation model that reproduces the C_buf collision
-issue.
+Not yet built: an `accelerator_top` testbench in `sim/` (the C_buf
+bug above was invisible to every unit TB), randomized backpressure
+testing on the DataMover interface.
 
 ## History
 
@@ -136,7 +146,7 @@ earlier fixed-function 8x8 design: four PS-side AXI DMAs, verified
 bit-exact on hardware, with a software tiling driver reaching about
 16.9 MB/s at 64x64 after two rounds of measured optimization
 (tile-major memory layout, tile-local accumulation, see
-`docs/perf_optimization.md`).
+`docs/archive/perf_optimization.md`).
 
 - 64 DSP48E1 slices (one per PE, 29% of Zynq-7020's 220), about 5700
   LUTs, about 7300 FFs, 100 MHz.
